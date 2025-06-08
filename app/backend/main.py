@@ -1,9 +1,19 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from .services import ai_service, camera_service
+import logging
 
 app = FastAPI()
+
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, e: Exception):
+    logging.error(f"Unhandled Exception: {str(e)}", exc_info=True)
+    return JSONResponse(
+        status_code=500,
+        content={"error": "An unexpected error occurred. Please check the logs."},
+    )
 
 @app.post("/api/tasks")
 async def create_task():

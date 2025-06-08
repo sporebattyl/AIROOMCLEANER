@@ -1,8 +1,28 @@
-def get_image_path():
+import base64
+import os
+import requests
+
+def get_camera_image():
     """
-    Returns the path to the camera image.
-    For now, this returns a placeholder.
+    Fetches the image from the specified Home Assistant camera entity.
     """
-    # In a real implementation, you would get the image from the camera entity.
-    # For now, we'll return the path to the placeholder image.
-    return "app/data/placeholder_room_image.jpg"
+    camera_entity_id = os.getenv("CAMERA_ENTITY_ID")
+    supervisor_token = os.getenv("SUPERVISOR_TOKEN")
+
+    if not camera_entity_id or not supervisor_token:
+        print("Error: CAMERA_ENTITY_ID or SUPERVISOR_TOKEN not set.")
+        return None
+
+    api_url = f"http://supervisor/core/api/camera_proxy/{camera_entity_id}"
+    headers = {"Authorization": f"Bearer {supervisor_token}"}
+
+    try:
+        response = requests.get(api_url, headers=headers)
+        if response.status_code == 200:
+            return base64.b64encode(response.content).decode("utf-8")
+        else:
+            print(f"Error fetching image: {response.status_code} - {response.text}")
+            return None
+    except requests.RequestException as e:
+        print(f"Error fetching image: {e}")
+        return None

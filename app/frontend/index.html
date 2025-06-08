@@ -9,8 +9,10 @@
 <body>
     <div class="container">
         <h1>AI Room Cleaner</h1>
+        <div id="error-message" aria-live="assertive"></div>
+        <div id="loading-indicator" style="display: none;">Loading...</div>
         <button id="analyze-btn">Analyze Room</button>
-        <div class="section">
+        <div class="section" aria-live="polite">
             <h2>To-Do List</h2>
             <ul id="task-list"></ul>
         </div>
