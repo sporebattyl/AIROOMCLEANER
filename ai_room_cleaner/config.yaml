@@ -11,12 +11,8 @@ init: false
 panel_icon: "mdi:robot-vacuum"
 ingress: true
 ingress_port: 8000
-startup: "application"
+startup: "services"
 boot: "auto"
-ports:
-  8000/tcp: null
-ports_description:
-  8000/tcp: "Web interface for the AI Room Cleaner"
 options:
   camera_entity: ""
   api_key: ""
@@ -28,4 +24,4 @@ schema:
   api_key: "password"
   ai_model: "str"
   update_frequency: "int(1,1440)"
-  prompt: "text"
+  prompt: "string"
