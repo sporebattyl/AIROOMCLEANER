@@ -17,4 +17,4 @@ export UPDATE_FREQUENCY
 export PROMPT
 
 # Start the FastAPI application
-uvicorn app.backend.main:app --host 0.0.0.0 --port 8000
+python3 -u /app/backend/main.py
