@@ -24,4 +24,4 @@ schema:
   api_key: "password"
   ai_model: "str"
   update_frequency: "int(1,1440)"
-  prompt: "string"
+  prompt: "str"
