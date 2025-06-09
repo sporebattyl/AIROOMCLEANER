@@ -11,8 +11,10 @@ init: false
 panel_icon: "mdi:robot-vacuum"
 ingress: true
 ingress_port: 8000
-startup: "services"
+startup: "application"
 boot: "auto"
+image: "ghcr.io/your-github-username/ai-room-cleaner-addon-{arch}"
+url: "https://github.com/your-github-username/ai-room-cleaner-addon"
 options:
   camera_entity: ""
   api_key: ""
