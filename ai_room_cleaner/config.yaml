@@ -3,10 +3,7 @@ name: "AI Room Cleaner"
 version: "0.1.0"
 slug: "ai_room_cleaner"
 description: "An intelligent cleanliness assistant using a multimodal AI to keep your room tidy."
-image:
-  aarch64: "homeassistant/aarch64-base-python:latest"
-  amd64: "homeassistant/amd64-base-python:latest"
-  armv7: "homeassistant/armv7-base-python:latest"
+image: "ai_room_cleaner"
 arch:
   - "aarch64"
   - "amd64"
