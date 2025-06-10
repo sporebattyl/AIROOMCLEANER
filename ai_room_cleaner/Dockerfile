@@ -2,8 +2,8 @@ FROM python:3.12-slim-bookworm
 
 WORKDIR /app
 COPY . .
-RUN apt-get update && apt-get install -y bash
-RUN sed -i 's/\r$//' /app/run.sh
+RUN apt-get update && apt-get install -y bash dos2unix
+RUN dos2unix /app/run.sh
 RUN chmod +x /app/run.sh
 
 
