@@ -2,6 +2,7 @@ FROM python:3.12-slim-bookworm
 
 WORKDIR /app
 COPY . .
+RUN sed -i 's/\r$//' /app/run.sh
 RUN chmod +x /app/run.sh
 
 
