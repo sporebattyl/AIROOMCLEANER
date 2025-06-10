@@ -14,10 +14,6 @@ ingress_port: 8000
 startup: "application"
 boot: "auto"
 url: "https://github.com/hassio-addons/addon-ai-room-cleaner"
-build_from:
-  aarch64: "ghcr.io/hassio-addons/base/python:3.11"
-  amd64: "ghcr.io/hassio-addons/base/python:3.11"
-  armv7: "ghcr.io/hassio-addons/base/python:3.11"
 options:
   camera_entity: ""
   api_key: ""

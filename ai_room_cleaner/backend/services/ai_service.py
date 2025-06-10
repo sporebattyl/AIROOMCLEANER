@@ -37,6 +37,10 @@ def analyze_room_for_mess(image_base64):
         
         messes = json.loads(text_content)
         return messes
+    except json.JSONDecodeError as e:
+        logging.error(f"Error decoding JSON from Gemini response: {e}")
+        logging.error(f"Received text for debugging: {text_content}")
+        return []
     except Exception as e:
         logging.error(f"Error analyzing image with Gemini: {e}")
         return []
