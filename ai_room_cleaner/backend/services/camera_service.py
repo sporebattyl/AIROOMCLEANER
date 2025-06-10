@@ -1,6 +1,7 @@
 import base64
 import os
 import requests
+import logging
 
 def get_camera_image():
     """
@@ -10,7 +11,7 @@ def get_camera_image():
     supervisor_token = os.getenv("SUPERVISOR_TOKEN")
 
     if not camera_entity_id or not supervisor_token:
-        print("Error: CAMERA_ENTITY_ID or SUPERVISOR_TOKEN not set.")
+        logging.error("Error: CAMERA_ENTITY_ID or SUPERVISOR_TOKEN not set.")
         return None
 
     api_url = f"http://supervisor/core/api/camera_proxy/{camera_entity_id}"
@@ -21,8 +22,8 @@ def get_camera_image():
         if response.status_code == 200:
             return base64.b64encode(response.content).decode("utf-8")
         else:
-            print(f"Error fetching image: {response.status_code} - {response.text}")
+            logging.error(f"Error fetching image: {response.status_code} - {response.text}")
             return None
     except requests.RequestException as e:
-        print(f"Error fetching image: {e}")
+        logging.error(f"Error getting camera image: {e}")
         return None

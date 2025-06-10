@@ -1,8 +1,9 @@
 from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import Response, JSONResponse
 from .services import ai_service, camera_service
 import logging
+import base64
 
 app = FastAPI()
 
@@ -15,27 +16,24 @@ async def global_exception_handler(request: Request, e: Exception):
         content={"error": "An unexpected error occurred. Please check the logs."},
     )
 
-@app.post("/api/tasks")
-async def create_task():
-    return {"message": "Task created successfully"}
-
 @app.get("/api/tasks")
 async def get_tasks():
     return []
 
-@app.put("/api/tasks/{task_id}")
-async def update_task(task_id: int):
-    return {"message": f"Task {task_id} updated successfully"}
-
 @app.post("/api/analyze")
 async def analyze_room():
-    image_path = camera_service.get_image_path()
-    analysis = ai_service.analyze_room_for_mess(image_path)
-    return analysis
+    image_base64 = camera_service.get_camera_image()
+    if not image_base64:
+        return JSONResponse(status_code=500, content={"error": "Could not retrieve image from camera."})
+    messes = ai_service.analyze_room_for_mess(image_base64)
+    return messes
 
 @app.get("/api/camera/image")
 async def get_camera_image():
-    image_path = camera_service.get_image_path()
-    return FileResponse(image_path, media_type="image/jpeg")
+    image_base64 = camera_service.get_camera_image()
+    if image_base64:
+        image_bytes = base64.b64decode(image_base64)
+        return Response(content=image_bytes, media_type="image/jpeg")
+    return JSONResponse(status_code=404, content={"error": "Image not found"})
 
 app.mount("/", StaticFiles(directory="../frontend", html=True), name="static")

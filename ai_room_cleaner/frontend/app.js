@@ -27,11 +27,9 @@ document.addEventListener('DOMContentLoaded', () => {
         errorMessage.textContent = '';
 
         try {
-            const data = await apiService('/api/analyze', { method: 'POST' });
-            if (data.messes) {
-                updateTaskList(data.messes);
-                updatePerformanceStats(data.messes);
-            }
+            const messes = await apiService('/api/analyze', { method: 'POST' });
+            updateTaskList(messes);
+            updatePerformanceStats(messes);
         } catch (error) {
             errorMessage.textContent = 'Failed to analyze room. Please try again.';
             console.error('Error analyzing room:', error);

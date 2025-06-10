@@ -1,63 +1,42 @@
 import os
-import openai
+import io
 import base64
 import json
+import logging
+import google.generativeai as genai
+from PIL import Image
 
-# Function to encode the image
-def encode_image(image_path):
-    with open(image_path, "rb") as image_file:
-        return base64.b64encode(image_file.read()).decode('utf-8')
-
-def analyze_room_for_mess(image_path):
+def analyze_room_for_mess(image_base64):
     """
-    Analyzes an image using GPT-4 Vision and returns a list of cleaning tasks.
+    Analyzes a base64-encoded image using Google Gemini and returns a list of cleaning tasks.
     """
-    api_key = os.getenv("OPENAI_API_KEY")
+    api_key = os.getenv("GOOGLE_API_KEY")
     if not api_key:
-        print("Error: OPENAI_API_KEY environment variable not set")
+        logging.error("Error: GOOGLE_API_KEY environment variable not set")
         return []
-
-    client = openai.OpenAI(api_key=api_key)
-    
-    base64_image = encode_image(image_path)
-    
-    prompt_text = os.getenv(
-        "PROMPT",
-        "Analyze the provided image of a room and identify items that are out of place or contribute to messiness. "
-        "Return a JSON-formatted array of strings, where each string is a specific cleaning task. For example: "
-        '["Pick up the clothes on the floor", "Clear the desk of papers", "Make the bed"]'
-    )
 
     try:
-        response = client.chat.completions.create(
-            model=os.getenv("AI_MODEL", "gpt-4-vision-preview"),
-            messages=[
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "text", "text": prompt_text},
-                        {
-                            "type": "image_url",
-                            "image_url": {
-                                "url": f"data:image/jpeg;base64,{base64_image}"
-                            }
-                        },
-                    ],
-                }
-            ],
-            max_tokens=300,
+        genai.configure(api_key=api_key)
+
+        image_bytes = base64.b64decode(image_base64)
+        image = Image.open(io.BytesIO(image_bytes))
+
+        model = genai.GenerativeModel('gemini-pro-vision')
+        
+        prompt = (
+            "Identify and list any items that are out of place or contributing to messiness in the room. "
+            "For each item, describe its location. Return the output as a JSON array of strings."
         )
         
-        content = response.choices[0].message.content
-        # The response might be inside a code block
-        if content.startswith("```json"):
-            content = content.strip("```json\n").strip("```")
-            
-        tasks = json.loads(content)
-        return tasks
-    except openai.APIError as e:
-        print(f"Error calling OpenAI API: {e}")
-        return []
-    except (json.JSONDecodeError, TypeError):
-        print(f"Error decoding JSON from response: {content}")
+        response = model.generate_content([prompt, image])
+        
+        # Extract JSON from the response text
+        text_content = response.text
+        if text_content.startswith("```json"):
+            text_content = text_content.strip("```json\n").strip("```")
+        
+        messes = json.loads(text_content)
+        return messes
+    except Exception as e:
+        logging.error(f"Error analyzing image with Gemini: {e}")
         return []
