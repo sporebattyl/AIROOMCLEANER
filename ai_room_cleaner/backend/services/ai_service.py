@@ -3,7 +3,7 @@ import io
 import base64
 import json
 import logging
-import google.generativeai as genai
+from google.generativeai.generative_models import GenerativeModel
 from PIL import Image
 
 def analyze_room_for_mess(image_base64):
@@ -16,12 +16,10 @@ def analyze_room_for_mess(image_base64):
         return []
 
     try:
-        genai.configure(api_key=api_key)
-
         image_bytes = base64.b64decode(image_base64)
         image = Image.open(io.BytesIO(image_bytes))
 
-        model = genai.GenerativeModel('gemini-pro-vision')
+        model = GenerativeModel('gemini-pro-vision')
         
         prompt = (
             "Identify and list any items that are out of place or contributing to messiness in the room. "
@@ -30,12 +28,15 @@ def analyze_room_for_mess(image_base64):
         
         response = model.generate_content([prompt, image])
         
-        # Extract JSON from the response text
+        # Extract JSON from the response text, handling markdown code blocks
         text_content = response.text
-        if text_content.startswith("```json"):
-            text_content = text_content.strip("```json\n").strip("```")
+        if "```json" in text_content:
+            start_index = text_content.find("```json") + len("```json")
+            end_index = text_content.rfind("```")
+            if end_index > start_index:
+                text_content = text_content[start_index:end_index]
         
-        messes = json.loads(text_content)
+        messes = json.loads(text_content.strip())
         return messes
     except json.JSONDecodeError as e:
         logging.error(f"Error decoding JSON from Gemini response: {e}")
