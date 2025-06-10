@@ -1,5 +1,5 @@
 # Use an official Python runtime as a parent image
-FROM ghcr.io/home-assistant/amd64-base-python:stable
+FROM %%BASE_IMAGE%%
 
 # Set the working directory in the container
 WORKDIR /app
