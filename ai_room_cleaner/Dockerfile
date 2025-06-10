@@ -1,12 +1,7 @@
 FROM python:3.12-slim-bookworm
 
-# Set the working directory in the container
 WORKDIR /app
-
-# Copy the current directory contents into the container at /app
-COPY . /app
-
-# Make the run script executable
+COPY . .
 RUN chmod +x /app/run.sh
 
 
