@@ -3,7 +3,7 @@ name: "AI Room Cleaner"
 version: "0.1.0"
 slug: "ai_room_cleaner"
 description: "An intelligent cleanliness assistant using a multimodal AI to keep your room tidy."
-image: "dmjtx/ai_room_cleaner"
+image: "dmjtx/ai_room_cleaner-{arch}"
 arch:
   - "aarch64"
   - "amd64"

@@ -1,6 +1,5 @@
-# Use an official Python runtime as a parent image
 ARG BUILD_FROM
-FROM ${BUILD_FROM}
+FROM $BUILD_FROM
 
 # Set the working directory in the container
 WORKDIR /app
