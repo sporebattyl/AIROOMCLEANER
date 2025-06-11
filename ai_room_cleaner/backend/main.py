@@ -37,7 +37,9 @@ async def serve_frontend():
     else:
         return HTMLResponse(content="<h1>Frontend not found</h1>", status_code=500)
 
+# Serve CSS and JS files from both absolute and relative paths for ingress compatibility
 @app.get("/style.css")
+@app.get("/static/style.css")
 async def serve_css():
     """Serve CSS file"""
     filepath = get_frontend_file("style.css")
@@ -47,6 +49,7 @@ async def serve_css():
         raise HTTPException(status_code=404, detail="CSS file not found")
 
 @app.get("/app.js")
+@app.get("/static/app.js")
 async def serve_js():
     """Serve JS file"""
     filepath = get_frontend_file("app.js")
@@ -54,17 +57,6 @@ async def serve_js():
         return FileResponse(filepath, media_type="application/javascript")
     else:
         raise HTTPException(status_code=404, detail="JS file not found")
-
-# Also serve from /static/ path for completeness
-@app.get("/static/style.css")
-async def serve_static_css():
-    """Serve CSS file from static path"""
-    return await serve_css()
-
-@app.get("/static/app.js")
-async def serve_static_js():
-    """Serve JS file from static path"""
-    return await serve_js()
 
 @app.get("/api/health")
 async def health_check():
