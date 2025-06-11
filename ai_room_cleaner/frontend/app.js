@@ -4,28 +4,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const errorMessage = document.getElementById('error-message');
     const loadingIndicator = document.getElementById('loading-indicator');
 
-    // Determine the correct API base URL
-    const getApiBaseUrl = () => {
-        const path = window.location.pathname;
-        const isIngress = path.includes('/api/hassio_ingress/');
-        
-        if (isIngress) {
-            // Extract the base path for the Ingress session
-            return path.substring(0, path.lastIndexOf('/iframer') + 1);
-        } else {
-            // For local dev or direct access, assume backend is at the root
-            return '';
-        }
-    };
+    const API_BASE_URL = window.location.pathname;
 
     const apiService = async (endpoint, options = {}) => {
-        const baseUrl = getApiBaseUrl();
-        const fullUrl = `${baseUrl}${endpoint}`;
+        const url = `${API_BASE_URL}${endpoint.substring(1)}`;
         
-        console.log(`Making API call to: ${fullUrl}`);
+        console.log(`Making API call to: ${url}`);
         
         try {
-            const response = await fetch(fullUrl, {
+            const response = await fetch(url, {
                 ...options,
                 headers: {
                     'Content-Type': 'application/json',
@@ -45,7 +32,7 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log('Response data:', data);
             return data;
         } catch (error) {
-            console.error(`API call to ${fullUrl} failed:`, error);
+            console.error(`API call to ${url} failed:`, error);
             throw error;
         }
     };
@@ -144,7 +131,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Initialize
     console.log('Initializing AI Room Cleaner...');
     console.log('Current URL:', window.location.href);
-    console.log('API Base URL:', getApiBaseUrl());
+    console.log('API Base URL:', API_BASE_URL);
     
     checkHealth();
     fetchTasks();
