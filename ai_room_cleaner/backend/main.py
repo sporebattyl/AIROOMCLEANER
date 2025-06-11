@@ -16,12 +16,13 @@ app = FastAPI(title="AI Room Cleaner", version="0.1.0")
 latest_tasks = []
 
 # Mount static files (frontend)
-app.mount("/static", StaticFiles(directory="frontend"), name="static")
+static_files_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "frontend"))
+app.mount("/static", StaticFiles(directory=static_files_path), name="static")
 
 @app.get("/")
 async def serve_frontend():
     """Serve the main frontend page"""
-    return FileResponse("frontend/index.html")
+    return FileResponse(os.path.join(static_files_path, "index.html"))
 
 @app.get("/api/health")
 async def health_check():
