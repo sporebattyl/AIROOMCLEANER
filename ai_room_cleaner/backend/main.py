@@ -1,7 +1,6 @@
 import os
 import logging
 from fastapi import FastAPI, HTTPException
-from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, FileResponse
 from backend.services.ai_service import analyze_room_for_mess
 from backend.services.camera_service import get_camera_image
@@ -15,44 +14,57 @@ app = FastAPI(title="AI Room Cleaner", version="0.1.0")
 # Store the latest analysis results
 latest_tasks = []
 
-# Mount static files (frontend)
-static_files_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "frontend"))
-app.mount("/static", StaticFiles(directory=static_files_path), name="static")
+# Get the frontend directory path
+frontend_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "frontend"))
+
+def get_frontend_file(filename: str):
+    """Helper function to get frontend file path and check if it exists"""
+    filepath = os.path.join(frontend_dir, filename)
+    logger.info(f"Looking for {filename} at: {filepath}")
+    if os.path.exists(filepath):
+        logger.info(f"Found {filename}")
+        return filepath
+    else:
+        logger.error(f"File not found: {filepath}")
+        return None
 
 @app.get("/", response_class=HTMLResponse)
 async def serve_frontend():
     """Serve the main frontend page"""
-    try:
-        with open(os.path.join(static_files_path, "index.html")) as f:
-            content = f.read()
-        # Fix the static file paths in the HTML
-        content = content.replace('href="/static/style.css"', 'href="/static/style.css"')
-        content = content.replace('src="/static/app.js"', 'src="/static/app.js"')
-        return content
-    except FileNotFoundError:
-        logger.error(f"index.html not found at {static_files_path}")
-        return HTMLResponse(content="<h1>Frontend files not found</h1>", status_code=500)
+    filepath = get_frontend_file("index.html")
+    if filepath:
+        return FileResponse(filepath, media_type="text/html")
+    else:
+        return HTMLResponse(content="<h1>Frontend not found</h1>", status_code=500)
 
-# Add explicit routes for CSS and JS files to help with debugging
 @app.get("/style.css")
 async def serve_css():
-    """Serve CSS file directly"""
-    css_path = os.path.join(static_files_path, "style.css")
-    if os.path.exists(css_path):
-        return FileResponse(css_path, media_type="text/css")
+    """Serve CSS file"""
+    filepath = get_frontend_file("style.css")
+    if filepath:
+        return FileResponse(filepath, media_type="text/css")
     else:
-        logger.error(f"CSS file not found at {css_path}")
         raise HTTPException(status_code=404, detail="CSS file not found")
 
 @app.get("/app.js")
 async def serve_js():
-    """Serve JS file directly"""
-    js_path = os.path.join(static_files_path, "app.js")
-    if os.path.exists(js_path):
-        return FileResponse(js_path, media_type="application/javascript")
+    """Serve JS file"""
+    filepath = get_frontend_file("app.js")
+    if filepath:
+        return FileResponse(filepath, media_type="application/javascript")
     else:
-        logger.error(f"JS file not found at {js_path}")
         raise HTTPException(status_code=404, detail="JS file not found")
+
+# Also serve from /static/ path for completeness
+@app.get("/static/style.css")
+async def serve_static_css():
+    """Serve CSS file from static path"""
+    return await serve_css()
+
+@app.get("/static/app.js")
+async def serve_static_js():
+    """Serve JS file from static path"""
+    return await serve_js()
 
 @app.get("/api/health")
 async def health_check():
@@ -93,15 +105,29 @@ async def analyze_room():
         logger.error(f"Error during room analysis: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-# Add a startup event to log file paths for debugging
 @app.on_event("startup")
 async def startup_event():
-    logger.info(f"Static files directory: {static_files_path}")
-    logger.info(f"Frontend files exist:")
+    """Log startup information and check for frontend files"""
+    logger.info(f"Frontend directory: {frontend_dir}")
+    logger.info("Checking for frontend files...")
+    
+    # List all files in the frontend directory
+    if os.path.exists(frontend_dir):
+        logger.info("Files in frontend directory:")
+        for item in os.listdir(frontend_dir):
+            item_path = os.path.join(frontend_dir, item)
+            if os.path.isfile(item_path):
+                logger.info(f"  File: {item}")
+            elif os.path.isdir(item_path):
+                logger.info(f"  Directory: {item}")
+    else:
+        logger.error(f"Frontend directory does not exist: {frontend_dir}")
+    
+    # Check for specific files
     for filename in ["index.html", "style.css", "app.js"]:
-        filepath = os.path.join(static_files_path, filename)
+        filepath = os.path.join(frontend_dir, filename)
         exists = os.path.exists(filepath)
-        logger.info(f"  {filename}: {'✓' if exists else '✗'} ({filepath})")
+        logger.info(f"  {filename}: {'✓' if exists else '✗'}")
 
 if __name__ == "__main__":
     import uvicorn

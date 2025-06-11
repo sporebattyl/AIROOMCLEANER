@@ -18,14 +18,25 @@ RUN curl -J -L -o /tmp/bashio.tar.gz \
     && rm -rf /tmp/bashio*
 
 WORKDIR /app
+
+# Copy requirements first for better Docker layer caching
+COPY requirements.txt .
+
+# Install Python dependencies
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy all application files
 COPY . .
+
+# Explicitly copy frontend files to ensure they're included
+COPY frontend/ ./frontend/
 
 # Fix line endings and permissions
 RUN dos2unix /app/run.sh
 RUN chmod +x /app/run.sh
 
-# Install Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+# List files to verify they were copied (for debugging)
+RUN echo "=== Files in /app ===" && find /app -type f -name "*.html" -o -name "*.css" -o -name "*.js" | head -20
 
 # Make port 8000 available to the world outside this container
 EXPOSE 8000
