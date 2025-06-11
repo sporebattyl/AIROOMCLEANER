@@ -15,17 +15,20 @@ def analyze_room_for_mess(image_base64: str) -> List[str]:
         ConfigError: If the AI model or API key is not configured.
         AIError: If the analysis fails for any reason.
     """
-    if not settings.api_key:
-        raise ConfigError("API key not configured for AI service.")
     if not settings.ai_model:
         raise ConfigError("AI model not specified in configuration.")
 
     logger.info(f"Using AI model: {settings.ai_model}")
 
     try:
-        if "gemini" in settings.ai_model.lower() or "google" in settings.ai_model.lower():
+        model_lower = settings.ai_model.lower()
+        if "gemini" in model_lower or "google" in model_lower:
+            if not settings.google_api_key:
+                raise ConfigError("Google API key is not configured for Gemini model.")
             return _analyze_with_gemini(image_base64)
-        elif "gpt" in settings.ai_model.lower() or "openai" in settings.ai_model.lower():
+        elif "gpt" in model_lower or "openai" in model_lower:
+            if not settings.openai_api_key:
+                raise ConfigError("OpenAI API key is not configured for GPT model.")
             return _analyze_with_openai(image_base64)
         else:
             raise AIError(f"Unsupported AI model: {settings.ai_model}")

@@ -1,14 +1,10 @@
 import os
 import logging
-from fastapi import FastAPI, HTTPException, Request, APIRouter
-from fastapi.responses import FileResponse
+from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.concurrency import run_in_threadpool
-from backend.services.ai_service import analyze_room_for_mess
-from backend.services.camera_service import get_camera_image
 from backend.core.config import settings
-from backend.core.exceptions import AIError, CameraError, ConfigError
+from backend.api.router import router as api_router
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -25,63 +21,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Store the latest analysis results
-latest_tasks = []
-
-# Get the frontend directory path
-# Mount the entire frontend directory as static files
+# Mount the frontend directory
 frontend_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "frontend"))
 if os.path.exists(frontend_dir):
-    app.mount("/", StaticFiles(directory=frontend_dir, html=True), name="frontend")
+    app.mount("/", StaticFiles(directory=frontend_dir, html=True), name="static")
     logger.info(f"Mounted frontend directory: {frontend_dir}")
 else:
     logger.error(f"Frontend directory not found at: {frontend_dir}")
-
-# API Router
-api_router = APIRouter()
-
-@api_router.get("/health")
-async def health_check():
-    """Health check endpoint"""
-    return {"status": "healthy", "service": "AI Room Cleaner"}
-
-@api_router.get("/tasks")
-async def get_tasks():
-    """Get the current list of cleaning tasks"""
-    return latest_tasks
-
-@api_router.post("/analyze")
-async def analyze_room():
-    """Analyze the room for messes using AI"""
-    global latest_tasks
-    
-    try:
-        logger.info("=== Starting room analysis ===")
-        
-        # Validate essential configuration
-        settings.validate()
-        
-        logger.info("Attempting to get camera image...")
-        image_base64 = await get_camera_image()
-        logger.info(f"Successfully retrieved camera image (length: {len(image_base64)} characters)")
-        
-        logger.info("Starting AI analysis in a background thread...")
-        messes = await run_in_threadpool(analyze_room_for_mess, image_base64)
-        logger.info(f"Analysis complete. Found {len(messes)} items: {messes}")
-        
-        latest_tasks = messes
-        
-        return {"tasks": messes, "count": len(messes)}
-        
-    except (ConfigError, CameraError, AIError) as e:
-        logger.error(f"Error during room analysis: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail="An AI processing error occurred.")
-    except HTTPException:
-        # Re-raise HTTP exceptions from FastAPI
-        raise
-    except Exception as e:
-        logger.error(f"An unexpected error occurred: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail="An unexpected internal error occurred.")
 
 # Add middleware to log all requests for debugging
 @app.middleware("http")

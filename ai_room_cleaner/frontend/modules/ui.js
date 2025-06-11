@@ -1,10 +1,14 @@
 export const updateTaskList = (tasks) => {
     const taskList = document.getElementById('task-list');
     taskList.innerHTML = '';
+
     if (!tasks || tasks.length === 0) {
-        taskList.innerHTML = '<li>No tasks found. The room is clean!</li>';
+        const li = document.createElement('li');
+        li.textContent = 'No tasks found. The room is clean!';
+        taskList.appendChild(li);
         return;
     }
+
     tasks.forEach((task, index) => {
         const li = document.createElement('li');
         li.textContent = task;
@@ -44,7 +48,7 @@ export const hideLoading = () => {
 
 export const showError = (message) => {
     const errorMessage = document.getElementById('error-message');
-    errorMessage.textContent = `Error: ${message}. Please try again.`;
+    errorMessage.textContent = message;
     errorMessage.classList.add('error-message--visible');
 };
 

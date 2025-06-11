@@ -1,4 +1,4 @@
-import { checkHealth, fetchTasks, analyzeRoom } from './modules/api.js';
+import { analyzeRoom } from './modules/api.js';
 import { updateTaskList, updateCleanlinessScore, showLoading, hideLoading, showError, clearError } from './modules/ui.js';
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -19,18 +19,5 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    const initializeApp = async () => {
-        try {
-            await checkHealth();
-            const tasks = await fetchTasks();
-            updateTaskList(tasks);
-        } catch (error) {
-            showError('Error: Could not connect to the backend.');
-            updateTaskList([]);
-        }
-    };
-
     analyzeBtn.addEventListener('click', handleAnalyzeRoom);
-    
-    initializeApp();
 });
