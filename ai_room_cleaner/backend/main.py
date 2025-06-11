@@ -82,28 +82,59 @@ async def analyze_room():
     global latest_tasks
     
     try:
-        logger.info("Starting room analysis...")
+        logger.info("=== Starting room analysis ===")
+        
+        # Check environment variables
+        camera_entity = os.getenv("CAMERA_ENTITY_ID")
+        supervisor_token = os.getenv("SUPERVISOR_TOKEN")
+        api_key = os.getenv("GOOGLE_API_KEY") or os.getenv("OPENAI_API_KEY")
+        ai_model = os.getenv("AI_MODEL", "gemini-2.5-pro")
+        
+        logger.info(f"Camera Entity: {camera_entity}")
+        logger.info(f"Supervisor Token available: {'Yes' if supervisor_token else 'No'}")
+        logger.info(f"API Key available: {'Yes' if api_key else 'No'}")
+        logger.info(f"AI Model: {ai_model}")
+        
+        # Check if we have all required configuration
+        if not camera_entity:
+            logger.error("CAMERA_ENTITY_ID not configured")
+            raise HTTPException(status_code=500, detail="Camera entity not configured")
+        
+        if not supervisor_token:
+            logger.error("SUPERVISOR_TOKEN not available")
+            raise HTTPException(status_code=500, detail="Supervisor token not available")
+        
+        if not api_key:
+            logger.error("API key not configured")
+            raise HTTPException(status_code=500, detail="AI API key not configured")
         
         # Get image from camera
+        logger.info("Attempting to get camera image...")
         image_base64 = get_camera_image()
+        
         if not image_base64:
+            logger.error("Failed to get camera image")
             raise HTTPException(status_code=500, detail="Failed to get camera image")
         
-        logger.info("Successfully retrieved camera image")
+        logger.info(f"Successfully retrieved camera image (length: {len(image_base64)} characters)")
         
         # Analyze image for messes
+        logger.info("Starting AI analysis...")
         messes = analyze_room_for_mess(image_base64)
         
-        logger.info(f"Analysis complete. Found {len(messes)} items")
+        logger.info(f"Analysis complete. Found {len(messes)} items: {messes}")
         
         # Update the stored tasks
         latest_tasks = messes
         
-        return messes
+        return {"tasks": messes, "count": len(messes)}
         
+    except HTTPException:
+        # Re-raise HTTP exceptions as-is
+        raise
     except Exception as e:
-        logger.error(f"Error during room analysis: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Unexpected error during room analysis: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}")
 
 @app.on_event("startup")
 async def startup_event():
