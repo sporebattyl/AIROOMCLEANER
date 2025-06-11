@@ -2,6 +2,8 @@ import os
 import logging
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.middleware.cors import CORSMiddleware
 from backend.services.ai_service import analyze_room_for_mess
 from backend.services.camera_service import get_camera_image
 
@@ -10,6 +12,15 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = FastAPI(title="AI Room Cleaner", version="0.1.0")
+
+# Add CORS middleware for Home Assistant ingress
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Store the latest analysis results
 latest_tasks = []
@@ -28,6 +39,11 @@ def get_frontend_file(filename: str):
         logger.error(f"File not found: {filepath}")
         return None
 
+# Mount static files directory
+if os.path.exists(frontend_dir):
+    app.mount("/static", StaticFiles(directory=frontend_dir), name="static")
+    logger.info(f"Mounted static files from {frontend_dir}")
+
 @app.get("/", response_class=HTMLResponse)
 async def serve_frontend():
     """Serve the main frontend page"""
@@ -37,26 +53,64 @@ async def serve_frontend():
     else:
         return HTMLResponse(content="<h1>Frontend not found</h1>", status_code=500)
 
-# Serve CSS and JS files from both absolute and relative paths for ingress compatibility
+# Primary routes for static files (for ingress compatibility)
 @app.get("/style.css")
-@app.get("/static/style.css")
 async def serve_css():
-    """Serve CSS file"""
+    """Serve CSS file with correct MIME type"""
     filepath = get_frontend_file("style.css")
     if filepath:
-        return FileResponse(filepath, media_type="text/css")
+        return FileResponse(
+            filepath, 
+            media_type="text/css",
+            headers={"Content-Type": "text/css; charset=utf-8"}
+        )
     else:
         raise HTTPException(status_code=404, detail="CSS file not found")
 
 @app.get("/app.js")
-@app.get("/static/app.js")
 async def serve_js():
-    """Serve JS file"""
+    """Serve JS file with correct MIME type"""
     filepath = get_frontend_file("app.js")
     if filepath:
-        return FileResponse(filepath, media_type="application/javascript")
+        return FileResponse(
+            filepath, 
+            media_type="application/javascript",
+            headers={"Content-Type": "application/javascript; charset=utf-8"}
+        )
     else:
         raise HTTPException(status_code=404, detail="JS file not found")
+
+# Alternative routes for static files (fallback)
+@app.get("/static/style.css")
+async def serve_css_static():
+    """Serve CSS file from static path"""
+    return await serve_css()
+
+@app.get("/static/app.js")
+async def serve_js_static():
+    """Serve JS file from static path"""
+    return await serve_js()
+
+# Ingress-specific routes (Home Assistant may prefix these)
+@app.get("/{addon_slug}/style.css")
+async def serve_css_ingress(addon_slug: str):
+    """Serve CSS file for ingress path"""
+    return await serve_css()
+
+@app.get("/{addon_slug}/app.js")
+async def serve_js_ingress(addon_slug: str):
+    """Serve JS file for ingress path"""
+    return await serve_js()
+
+@app.get("/{addon_slug}/static/style.css")
+async def serve_css_ingress_static(addon_slug: str):
+    """Serve CSS file for ingress static path"""
+    return await serve_css()
+
+@app.get("/{addon_slug}/static/app.js")
+async def serve_js_ingress_static(addon_slug: str):
+    """Serve JS file for ingress static path"""
+    return await serve_js()
 
 @app.get("/api/health")
 async def health_check():
