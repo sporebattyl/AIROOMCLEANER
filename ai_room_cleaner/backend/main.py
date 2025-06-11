@@ -2,7 +2,7 @@ import os
 import logging
 from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, FileResponse
 from backend.services.ai_service import analyze_room_for_mess
 from backend.services.camera_service import get_camera_image
 
@@ -22,8 +22,37 @@ app.mount("/static", StaticFiles(directory=static_files_path), name="static")
 @app.get("/", response_class=HTMLResponse)
 async def serve_frontend():
     """Serve the main frontend page"""
-    with open(os.path.join(static_files_path, "index.html")) as f:
-        return f.read()
+    try:
+        with open(os.path.join(static_files_path, "index.html")) as f:
+            content = f.read()
+        # Fix the static file paths in the HTML
+        content = content.replace('href="/static/style.css"', 'href="/static/style.css"')
+        content = content.replace('src="/static/app.js"', 'src="/static/app.js"')
+        return content
+    except FileNotFoundError:
+        logger.error(f"index.html not found at {static_files_path}")
+        return HTMLResponse(content="<h1>Frontend files not found</h1>", status_code=500)
+
+# Add explicit routes for CSS and JS files to help with debugging
+@app.get("/style.css")
+async def serve_css():
+    """Serve CSS file directly"""
+    css_path = os.path.join(static_files_path, "style.css")
+    if os.path.exists(css_path):
+        return FileResponse(css_path, media_type="text/css")
+    else:
+        logger.error(f"CSS file not found at {css_path}")
+        raise HTTPException(status_code=404, detail="CSS file not found")
+
+@app.get("/app.js")
+async def serve_js():
+    """Serve JS file directly"""
+    js_path = os.path.join(static_files_path, "app.js")
+    if os.path.exists(js_path):
+        return FileResponse(js_path, media_type="application/javascript")
+    else:
+        logger.error(f"JS file not found at {js_path}")
+        raise HTTPException(status_code=404, detail="JS file not found")
 
 @app.get("/api/health")
 async def health_check():
@@ -63,6 +92,16 @@ async def analyze_room():
     except Exception as e:
         logger.error(f"Error during room analysis: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+# Add a startup event to log file paths for debugging
+@app.on_event("startup")
+async def startup_event():
+    logger.info(f"Static files directory: {static_files_path}")
+    logger.info(f"Frontend files exist:")
+    for filename in ["index.html", "style.css", "app.js"]:
+        filepath = os.path.join(static_files_path, filename)
+        exists = os.path.exists(filepath)
+        logger.info(f"  {filename}: {'✓' if exists else '✗'} ({filepath})")
 
 if __name__ == "__main__":
     import uvicorn
