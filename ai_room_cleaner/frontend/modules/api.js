@@ -26,18 +26,7 @@ const apiService = async (endpoint, options = {}) => {
 
 export const analyzeRoom = async () => {
     try {
-        const response = await apiService('/analyze', { method: 'POST' });
-        
-        let messes;
-        if (response.tasks) {
-            messes = response.tasks;
-        } else if (Array.isArray(response)) {
-            messes = response;
-        } else {
-            messes = [];
-        }
-        
-        return messes;
+        return await apiService('/analyze', { method: 'POST' });
     } catch (error) {
         console.error('Error analyzing room:', error);
         throw error;

@@ -1,59 +1,96 @@
-export const updateTaskList = (tasks) => {
-    const taskList = document.getElementById('task-list');
-    taskList.innerHTML = '';
+const messesList = document.getElementById('messes-list');
+const tasksCountEl = document.getElementById('tasks-count');
+const cleanlinessScoreEl = document.getElementById('cleanliness-score');
+const loadingOverlay = document.getElementById('loading-overlay');
+const errorToast = document.getElementById('error-toast');
+const historyList = document.getElementById('history-list');
+const historyEmptyState = document.getElementById('history-empty-state');
+const resultsContainer = document.getElementById('results-container');
+const emptyState = document.getElementById('empty-state');
 
-    if (!tasks || tasks.length === 0) {
+export const updateMessesList = (tasks) => {
+    messesList.innerHTML = '';
+    tasks.forEach(task => {
         const li = document.createElement('li');
-        li.textContent = 'No tasks found. The room is clean!';
-        taskList.appendChild(li);
-        return;
-    }
-
-    tasks.forEach((task, index) => {
-        const li = document.createElement('li');
-        li.textContent = task;
-        li.id = `task-${index}`;
-        taskList.appendChild(li);
+        li.textContent = task.mess;
+        li.title = `Reason: ${task.reason || 'N/A'}. Click to mark as complete.`;
+        messesList.appendChild(li);
     });
+    tasksCountEl.textContent = tasks.length;
+    emptyState.classList.add('hidden');
+    messesList.classList.remove('hidden');
 };
 
-export const updateCleanlinessScore = (tasks) => {
-    const tasksCompleted = document.getElementById('tasks-completed');
-    const cleanlinessScoreEl = document.getElementById('cleanliness-score');
+export const showEmptyState = () => {
+    messesList.innerHTML = '';
+    messesList.classList.add('hidden');
+    tasksCountEl.textContent = 0;
+    emptyState.classList.remove('hidden');
+};
 
-    const numTasks = tasks.length;
-    const score = Math.max(0, 100 - (numTasks * 10));
-
-    tasksCompleted.textContent = numTasks;
-    cleanlinessScoreEl.textContent = score;
-
-    if (score > 80) {
-        cleanlinessScoreEl.style.color = 'green';
+export const updateCleanlinessScore = (score) => {
+    cleanlinessScoreEl.textContent = `${score}%`;
+    if (score >= 80) {
+        cleanlinessScoreEl.style.color = 'var(--success-color)';
     } else if (score >= 50) {
-        cleanlinessScoreEl.style.color = 'orange';
+        cleanlinessScoreEl.style.color = 'var(--secondary-color)';
     } else {
-        cleanlinessScoreEl.style.color = 'red';
+        cleanlinessScoreEl.style.color = 'var(--error-color)';
     }
 };
 
 export const showLoading = () => {
-    document.getElementById('loading-indicator').style.display = 'block';
-    document.getElementById('analyze-btn').disabled = true;
+    loadingOverlay.classList.remove('hidden');
 };
 
 export const hideLoading = () => {
-    document.getElementById('loading-indicator').style.display = 'none';
-    document.getElementById('analyze-btn').disabled = false;
+    loadingOverlay.classList.add('hidden');
 };
 
 export const showError = (message) => {
-    const errorMessage = document.getElementById('error-message');
-    errorMessage.textContent = message;
-    errorMessage.classList.add('error-message--visible');
+    errorToast.textContent = message;
+    errorToast.classList.remove('hidden');
+    setTimeout(() => {
+        errorToast.classList.add('hidden');
+    }, 3000);
 };
 
 export const clearError = () => {
-    const errorMessage = document.getElementById('error-message');
-    errorMessage.textContent = '';
-    errorMessage.classList.remove('error-message--visible');
+    errorToast.classList.add('hidden');
+};
+
+export const toggleTheme = () => {
+    const currentTheme = document.documentElement.getAttribute('data-theme');
+    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', newTheme);
+    localStorage.setItem('theme', newTheme);
+};
+
+export const updateHistoryList = (history) => {
+    historyList.innerHTML = '';
+    if (history.length === 0) {
+        historyEmptyState.classList.remove('hidden');
+        historyList.classList.add('hidden');
+    } else {
+        historyEmptyState.classList.add('hidden');
+        historyList.classList.remove('hidden');
+        history.forEach(item => {
+            const li = document.createElement('li');
+            li.innerHTML = `
+                <span>${item.date}</span>
+                <span>${item.score}%</span>
+            `;
+            historyList.appendChild(li);
+        });
+    }
+};
+
+export const clearHistory = () => {
+    historyList.innerHTML = '';
+    historyEmptyState.classList.remove('hidden');
+    historyList.classList.add('hidden');
+};
+
+export const showResults = () => {
+    resultsContainer.classList.remove('hidden');
 };

@@ -8,7 +8,7 @@ from backend.core.exceptions import AIError, ConfigError
 
 logger = logging.getLogger(__name__)
 
-def analyze_room_for_mess(image_base64: str) -> List[str]:
+def analyze_room_for_mess(image_base64: str) -> List[dict]:
     """
     Analyzes a base64-encoded image using the configured AI service.
     Raises:
@@ -40,7 +40,7 @@ def analyze_room_for_mess(image_base64: str) -> List[str]:
         logger.error(f"Unexpected error during AI analysis: {e}", exc_info=True)
         raise AIError("An unexpected error occurred during analysis.") from e
 
-def _analyze_with_gemini(image_base64: str) -> List[str]:
+def _analyze_with_gemini(image_base64: str) -> List[dict]:
     """Analyze image using Google Gemini."""
     try:
         import google.generativeai as genai
@@ -72,7 +72,7 @@ def _analyze_with_gemini(image_base64: str) -> List[str]:
         logger.error(f"Error with Gemini analysis: {e}", exc_info=True)
         raise AIError("Failed to analyze image with Gemini.") from e
 
-def _analyze_with_openai(image_base64: str) -> List[str]:
+def _analyze_with_openai(image_base64: str) -> List[dict]:
     """Analyze image using OpenAI GPT."""
     try:
         import openai
@@ -108,8 +108,14 @@ def _analyze_with_openai(image_base64: str) -> List[str]:
         logger.error(f"Error with OpenAI analysis: {e}", exc_info=True)
         raise AIError("Failed to analyze image with OpenAI.") from e
 
-def _parse_ai_response(text_content: str) -> List[str]:
-    """Parse the AI's response to extract a list of tasks."""
+def _parse_ai_response(text_content: str) -> List[dict]:
+    """
+    Parse the AI's JSON response to extract a list of tasks.
+    The AI is expected to return a JSON object with a "tasks" key,
+    which contains a list of objects, where each object has a "mess" and "reason" key.
+    Example: {"tasks": [{"mess": "clothes on floor", "reason": "Reduces cleanliness"}]}
+    """
+    logger.debug(f"Attempting to parse AI response: {text_content}")
     # Handle markdown code blocks
     if "```json" in text_content:
         start_index = text_content.find("```json") + len("```json")
@@ -123,31 +129,58 @@ def _parse_ai_response(text_content: str) -> List[str]:
             text_content = text_content[start_index:end_index]
 
     try:
-        messes = json.loads(text_content.strip())
-        if isinstance(messes, list):
-            return [str(item) for item in messes]
+        data = json.loads(text_content.strip())
+        
+        if isinstance(data, dict) and "tasks" in data:
+            tasks = data["tasks"]
+            if isinstance(tasks, list):
+                # Validate that tasks are dicts, not strings
+                if all(isinstance(item, dict) for item in tasks):
+                    logger.info(f"Successfully parsed {len(tasks)} tasks.")
+                    return tasks
+                else:
+                    logger.warning("Tasks in JSON are not formatted as objects. Attempting to convert.")
+                    return [{"mess": str(item), "reason": "N/A"} for item in tasks]
+            else:
+                raise AIError("AI response's 'tasks' key is not a list.")
+        
+        # Fallback for older list-based format
+        elif isinstance(data, list):
+            logger.warning("AI returned a list instead of a dict. Converting to new format.")
+            return [{"mess": str(item), "reason": "N/A"} for item in data]
+            
         else:
-            logger.warning("AI response was not a list, wrapping in a list.")
-            return [str(messes)]
-    except json.JSONDecodeError:
-        logger.warning("Failed to parse JSON, attempting to extract tasks from text.")
-        return _parse_text_response(text_content)
+            raise AIError("AI response is not a JSON object with a 'tasks' key.")
 
-def _parse_text_response(text: str) -> List[str]:
+    except json.JSONDecodeError:
+        logger.error("Failed to decode JSON from AI response.", exc_info=True)
+        # Try a more lenient text-based parsing as a last resort
+        return _parse_text_response(text_content)
+    except Exception as e:
+        logger.error(f"Error parsing AI response: {e}", exc_info=True)
+        raise AIError("Failed to parse the AI's response.")
+
+def _parse_text_response(text: str) -> List[dict]:
     """Fallback parser for plain text responses."""
+    logger.warning("Falling back to text-based parsing for AI response.")
     tasks = []
     lines = text.split('\n')
     
     for line in lines:
         line = line.strip()
-        if not line or line.startswith('#') or line in ['```', '```json']:
+        if not line or line.startswith('#') or line.startswith('{') or line in ['```', '```json', 'tasks:']:
             continue
         
-        line = line.lstrip('•-*').strip()
-        if line and len(line) > 10:  # Basic filter for meaningful tasks
-            tasks.append(line)
+        # Remove list markers
+        line = line.lstrip('•-*[]"').rstrip('",').strip()
+        
+        if line and len(line) > 10:  # Basic filter
+            tasks.append({"mess": line, "reason": "Parsed from text"})
     
     if not tasks:
-        raise AIError("AI returned an empty or unparseable response.")
+        logger.warning("Could not extract any tasks from text response.")
+        # Return an empty list instead of raising an error, to be more resilient
+        return []
     
-    return tasks[:10]  # Limit to 10 tasks max
+    logger.info(f"Extracted {len(tasks)} tasks using fallback text parser.")
+    return tasks[:10]

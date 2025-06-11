@@ -18,7 +18,7 @@ async def health_check():
 @router.get("/tasks")
 async def get_tasks():
     """Get the current list of cleaning tasks"""
-    return app_state.get_tasks()
+    return await app_state.get_tasks()
 
 @router.post("/analyze")
 async def analyze_room():
@@ -35,9 +35,9 @@ async def analyze_room():
         messes = await run_in_threadpool(analyze_room_for_mess, image_base64)
         logger.info(f"Analysis complete. Found {len(messes)} items: {messes}")
         
-        app_state.set_tasks(messes)
+        await app_state.set_tasks(messes)
         
-        return {"tasks": messes, "count": len(messes)}
+        return {"tasks": messes}
         
     except (ConfigError, CameraError, AIError) as e:
         logger.error(f"Error during room analysis: {e}", exc_info=True)
