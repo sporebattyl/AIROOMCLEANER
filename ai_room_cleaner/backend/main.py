@@ -2,7 +2,7 @@ import os
 import logging
 from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import HTMLResponse
 from backend.services.ai_service import analyze_room_for_mess
 from backend.services.camera_service import get_camera_image
 
@@ -19,10 +19,11 @@ latest_tasks = []
 static_files_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "frontend"))
 app.mount("/static", StaticFiles(directory=static_files_path), name="static")
 
-@app.get("/")
+@app.get("/", response_class=HTMLResponse)
 async def serve_frontend():
     """Serve the main frontend page"""
-    return FileResponse(os.path.join(static_files_path, "index.html"))
+    with open(os.path.join(static_files_path, "index.html")) as f:
+        return f.read()
 
 @app.get("/api/health")
 async def health_check():
