@@ -8,59 +8,29 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="container">
+    <header>
         <h1>AI Room Cleaner</h1>
+    </header>
+    <main class="container">
         <div id="error-message" aria-live="assertive"></div>
-        <div id="loading-indicator" style="display: none;">
-            <div style="text-align: center; padding: 20px;">
-                <div style="display: inline-block; width: 20px; height: 20px; border: 3px solid #f3f3f3; border-top: 3px solid #3498db; border-radius: 50%; animation: spin 1s linear infinite;"></div>
-                <p>Analyzing room...</p>
-            </div>
+        <div id="loading-indicator">
+            <div></div>
+            <p>Analyzing room...</p>
         </div>
         <button id="analyze-btn" class="btn">Analyze Room</button>
-        <div class="section" aria-live="polite">
+        <section aria-live="polite">
             <h2>To-Do List</h2>
             <ul id="task-list"></ul>
-        </div>
-        <div class="section">
+        </section>
+        <section>
             <h2>Performance Stats</h2>
             <p>Tasks Identified: <span id="tasks-completed">0</span></p>
             <p>Cleanliness Score: <span id="cleanliness-score">N/A</span></p>
-        </div>
-    </div>
-    <!-- Try multiple paths for JS to ensure compatibility with ingress -->
-    <script src="./app.js"></script>
-    <script>
-        // Fallback if app.js doesn't load
-        if (typeof document.getElementById('analyze-btn').onclick !== 'function') {
-            // Try loading from alternative paths
-            const script1 = document.createElement('script');
-            script1.src = 'app.js';
-            script1.onerror = function() {
-                const script2 = document.createElement('script');
-                script2.src = '/static/app.js';
-                document.head.appendChild(script2);
-            };
-            document.head.appendChild(script1);
-        }
-    </script>
-    <style>
-        /* Fallback styles in case CSS doesn't load */
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        
-        /* Basic fallback styling */
-        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
-        .container { max-width: 800px; margin: auto; background: white; padding: 20px; border-radius: 8px; }
-        button { background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; }
-        button:hover { background: #0056b3; }
-        button:disabled { background: #ccc; cursor: not-allowed; }
-        #error-message { color: red; margin: 10px 0; }
-        .section { margin: 20px 0; }
-        ul { list-style: none; padding: 0; }
-        li { background: #f8f9fa; margin: 5px 0; padding: 10px; border-radius: 4px; border-left: 3px solid #007bff; }
-    </style>
+        </section>
+    </main>
+    <footer>
+        <p>&copy; 2025 AI Room Cleaner</p>
+    </footer>
+    <script src="app.js" type="module"></script>
 </body>
 </html>

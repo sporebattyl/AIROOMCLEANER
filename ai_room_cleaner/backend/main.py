@@ -1,11 +1,14 @@
 import os
 import logging
 from fastapi import FastAPI, HTTPException, Request, APIRouter
-from fastapi.responses import HTMLResponse, FileResponse
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.concurrency import run_in_threadpool
 from backend.services.ai_service import analyze_room_for_mess
 from backend.services.camera_service import get_camera_image
+from backend.core.config import settings
+from backend.core.exceptions import AIError, CameraError, ConfigError
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -16,7 +19,7 @@ app = FastAPI(title="AI Room Cleaner", version="0.1.0")
 # Add CORS middleware for Home Assistant ingress
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=settings.cors_allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -26,101 +29,13 @@ app.add_middleware(
 latest_tasks = []
 
 # Get the frontend directory path
+# Mount the entire frontend directory as static files
 frontend_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "frontend"))
-
-def get_frontend_file(filename: str):
-    """Helper function to get frontend file path and check if it exists"""
-    filepath = os.path.join(frontend_dir, filename)
-    logger.info(f"Looking for {filename} at: {filepath}")
-    if os.path.exists(filepath):
-        logger.info(f"Found {filename}")
-        return filepath
-    else:
-        logger.error(f"File not found: {filepath}")
-        return None
-
-# Mount static files directory
 if os.path.exists(frontend_dir):
-    app.mount("/static", StaticFiles(directory=frontend_dir), name="static")
-    logger.info(f"Mounted static files from {frontend_dir}")
-
-@app.get("/", response_class=HTMLResponse)
-async def serve_frontend():
-    """Serve the main frontend page"""
-    filepath = get_frontend_file("index.html")
-    if filepath:
-        return FileResponse(filepath, media_type="text/html")
-    else:
-        return HTMLResponse(content="<h1>Frontend not found</h1>", status_code=500)
-
-# Handle ingress root path
-@app.get("/api/hassio_ingress/{path:path}", response_class=HTMLResponse)
-async def serve_ingress_root(path: str = ""):
-    """Serve the main frontend page for ingress"""
-    if not path or path == "index.html":
-        filepath = get_frontend_file("index.html")
-        if filepath:
-            return FileResponse(filepath, media_type="text/html")
-    return HTMLResponse(content="<h1>Ingress path not found</h1>", status_code=404)
-
-# Primary routes for static files (for ingress compatibility)
-@app.get("/style.css")
-async def serve_css():
-    """Serve CSS file with correct MIME type"""
-    filepath = get_frontend_file("style.css")
-    if filepath:
-        return FileResponse(
-            filepath, 
-            media_type="text/css",
-            headers={"Content-Type": "text/css; charset=utf-8"}
-        )
-    else:
-        raise HTTPException(status_code=404, detail="CSS file not found")
-
-@app.get("/app.js")
-async def serve_js():
-    """Serve JS file with correct MIME type"""
-    filepath = get_frontend_file("app.js")
-    if filepath:
-        return FileResponse(
-            filepath, 
-            media_type="application/javascript",
-            headers={"Content-Type": "application/javascript; charset=utf-8"}
-        )
-    else:
-        raise HTTPException(status_code=404, detail="JS file not found")
-
-# Alternative routes for static files (fallback)
-@app.get("/static/style.css")
-async def serve_css_static():
-    """Serve CSS file from static path"""
-    return await serve_css()
-
-@app.get("/static/app.js")
-async def serve_js_static():
-    """Serve JS file from static path"""
-    return await serve_js()
-
-# Ingress-specific routes (Home Assistant may prefix these)
-@app.get("/{addon_slug}/style.css")
-async def serve_css_ingress(addon_slug: str):
-    """Serve CSS file for ingress path"""
-    return await serve_css()
-
-@app.get("/{addon_slug}/app.js")
-async def serve_js_ingress(addon_slug: str):
-    """Serve JS file for ingress path"""
-    return await serve_js()
-
-@app.get("/{addon_slug}/static/style.css")
-async def serve_css_ingress_static(addon_slug: str):
-    """Serve CSS file for ingress static path"""
-    return await serve_css()
-
-@app.get("/{addon_slug}/static/app.js")
-async def serve_js_ingress_static(addon_slug: str):
-    """Serve JS file for ingress static path"""
-    return await serve_js()
+    app.mount("/", StaticFiles(directory=frontend_dir, html=True), name="frontend")
+    logger.info(f"Mounted frontend directory: {frontend_dir}")
+else:
+    logger.error(f"Frontend directory not found at: {frontend_dir}")
 
 # API Router
 api_router = APIRouter()
@@ -143,57 +58,30 @@ async def analyze_room():
     try:
         logger.info("=== Starting room analysis ===")
         
-        # Check environment variables
-        camera_entity = os.getenv("CAMERA_ENTITY_ID")
-        supervisor_token = os.getenv("SUPERVISOR_TOKEN")
-        api_key = os.getenv("GOOGLE_API_KEY") or os.getenv("OPENAI_API_KEY")
-        ai_model = os.getenv("AI_MODEL", "gemini-2.5-pro")
+        # Validate essential configuration
+        settings.validate()
         
-        logger.info(f"Camera Entity: {camera_entity}")
-        logger.info(f"Supervisor Token available: {'Yes' if supervisor_token else 'No'}")
-        logger.info(f"API Key available: {'Yes' if api_key else 'No'}")
-        logger.info(f"AI Model: {ai_model}")
-        
-        # Check if we have all required configuration
-        if not camera_entity:
-            logger.error("CAMERA_ENTITY_ID not configured")
-            raise HTTPException(status_code=500, detail="Camera entity not configured")
-        
-        if not supervisor_token:
-            logger.error("SUPERVISOR_TOKEN not available")
-            raise HTTPException(status_code=500, detail="Supervisor token not available")
-        
-        if not api_key:
-            logger.error("API key not configured")
-            raise HTTPException(status_code=500, detail="AI API key not configured")
-        
-        # Get image from camera
         logger.info("Attempting to get camera image...")
-        image_base64 = get_camera_image()
-        
-        if not image_base64:
-            logger.error("Failed to get camera image")
-            raise HTTPException(status_code=500, detail="Failed to get camera image")
-        
+        image_base64 = await get_camera_image()
         logger.info(f"Successfully retrieved camera image (length: {len(image_base64)} characters)")
         
-        # Analyze image for messes
-        logger.info("Starting AI analysis...")
-        messes = analyze_room_for_mess(image_base64)
-        
+        logger.info("Starting AI analysis in a background thread...")
+        messes = await run_in_threadpool(analyze_room_for_mess, image_base64)
         logger.info(f"Analysis complete. Found {len(messes)} items: {messes}")
         
-        # Update the stored tasks
         latest_tasks = messes
         
         return {"tasks": messes, "count": len(messes)}
         
+    except (ConfigError, CameraError, AIError) as e:
+        logger.error(f"Error during room analysis: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="An AI processing error occurred.")
     except HTTPException:
-        # Re-raise HTTP exceptions as-is
+        # Re-raise HTTP exceptions from FastAPI
         raise
     except Exception as e:
-        logger.error(f"Unexpected error during room analysis: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}")
+        logger.error(f"An unexpected error occurred: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="An unexpected internal error occurred.")
 
 # Add middleware to log all requests for debugging
 @app.middleware("http")
@@ -208,41 +96,35 @@ app.include_router(api_router, prefix="/api")
 
 @app.on_event("startup")
 async def startup_event():
-    """Log startup information and check for frontend files"""
-    logger.info(f"Frontend directory: {frontend_dir}")
-    logger.info("Checking for frontend files...")
+    """Log startup information and check configurations."""
+    logger.info("--- AI Room Cleaner Starting Up ---")
+    logger.info(f"Camera Entity: {settings.camera_entity or 'Not set'}")
+    logger.info(f"AI Model: {settings.ai_model or 'Not set'}")
+    logger.info(f"Supervisor URL: {settings.supervisor_url}")
     
-    # List all files in the frontend directory
+    # Check for frontend files
+    logger.info("Checking for frontend files...")
     if os.path.exists(frontend_dir):
-        logger.info("Files in frontend directory:")
-        for item in os.listdir(frontend_dir):
-            item_path = os.path.join(frontend_dir, item)
-            if os.path.isfile(item_path):
-                logger.info(f"  File: {item}")
-            elif os.path.isdir(item_path):
-                logger.info(f"  Directory: {item}")
+        for filename in ["index.html", "style.css", "app.js"]:
+            filepath = os.path.join(frontend_dir, filename)
+            exists = os.path.exists(filepath)
+            logger.info(f"  {filename}: {'✓' if exists else '✗'}")
     else:
         logger.error(f"Frontend directory does not exist: {frontend_dir}")
     
-    # Check for specific files
-    for filename in ["index.html", "style.css", "app.js"]:
-        filepath = os.path.join(frontend_dir, filename)
-        exists = os.path.exists(filepath)
-        logger.info(f"  {filename}: {'✓' if exists else '✗'}")
+    try:
+        settings.validate()
+        logger.info("Essential configuration is valid.")
+    except ValueError as e:
+        logger.warning(f"Configuration validation failed on startup: {e}")
+    logger.info("--- Startup Complete ---")
 
 if __name__ == "__main__":
     import uvicorn
     
-    # Get configuration from environment variables
     host = "0.0.0.0"
     port = int(os.getenv("PORT", 8000))
     
     logger.info(f"Starting AI Room Cleaner on {host}:{port}")
-    
-    # Log configuration
-    camera_entity = os.getenv("CAMERA_ENTITY_ID", "Not set")
-    ai_model = os.getenv("AI_MODEL", "Not set")
-    logger.info(f"Camera Entity: {camera_entity}")
-    logger.info(f"AI Model: {ai_model}")
     
     uvicorn.run(app, host=host, port=port, log_level="info")

@@ -1,29 +1,36 @@
 import base64
-import os
-import requests
+import httpx
 import logging
+from backend.core.config import settings
+from backend.core.exceptions import CameraError, ConfigError
 
-def get_camera_image():
+logger = logging.getLogger(__name__)
+
+async def get_camera_image() -> str:
     """
     Fetches the image from the specified Home Assistant camera entity.
+    Raises:
+        ConfigError: If required configuration is missing.
+        CameraError: If the image cannot be fetched.
     """
-    camera_entity_id = os.getenv("CAMERA_ENTITY_ID")
-    supervisor_token = os.getenv("SUPERVISOR_TOKEN")
+    if not settings.camera_entity or not settings.supervisor_token:
+        raise ConfigError("Camera entity or supervisor token is not configured.")
 
-    if not camera_entity_id or not supervisor_token:
-        logging.error("Error: CAMERA_ENTITY_ID or SUPERVISOR_TOKEN not set.")
-        return None
-
-    api_url = f"http://supervisor/core/api/camera_proxy/{camera_entity_id}"
-    headers = {"Authorization": f"Bearer {supervisor_token}"}
+    api_url = f"{settings.supervisor_url}/camera_proxy/{settings.camera_entity}"
+    headers = {"Authorization": f"Bearer {settings.supervisor_token}"}
 
     try:
-        response = requests.get(api_url, headers=headers)
-        if response.status_code == 200:
+        async with httpx.AsyncClient() as client:
+            logger.info(f"Fetching camera image from: {api_url}")
+            response = await client.get(api_url, headers=headers, timeout=10)
+            response.raise_for_status()  # Raise HTTPError for bad responses (4xx or 5xx)
+            
+            logger.info("Successfully fetched camera image.")
             return base64.b64encode(response.content).decode("utf-8")
-        else:
-            logging.error(f"Error fetching image: {response.status_code} - {response.text}")
-            return None
-    except requests.RequestException as e:
-        logging.error(f"Error getting camera image: {e}")
-        return None
+            
+    except httpx.HTTPStatusError as e:
+        logger.error(f"HTTP error fetching image: {e.response.status_code} - {e.response.text}")
+        raise CameraError(f"Failed to fetch camera image: {e.response.status_code}") from e
+    except httpx.RequestError as e:
+        logger.error(f"Request error getting camera image: {e}")
+        raise CameraError(f"Failed to connect to camera: {e}") from e

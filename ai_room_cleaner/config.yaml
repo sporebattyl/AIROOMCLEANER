@@ -17,12 +17,20 @@ url: "https://github.com/hassio-addons/addon-ai-room-cleaner"
 options:
   camera_entity: ""
   api_key: ""
-  ai_model: "gemini-2.5-pro"
+  ai_model: "gemini-1.5-pro"
   update_frequency: 60
-  prompt: "Describe the state of the room and identify any items that are out of place."
+  supervisor_url: "http://supervisor/core/api"
+  ai_prompt: >-
+    Analyze this room image and identify any items that are out of place or contributing to messiness.
+    For each item, describe what needs to be cleaned or organized.
+    Return the output as a JSON array of strings, with each string being a specific cleaning task.
+  cors_allowed_origins:
+    - "*"
 schema:
   camera_entity: "str"
   api_key: "password"
   ai_model: "str"
   update_frequency: "int(1,1440)"
-  prompt: "str"
+  supervisor_url: "str"
+  ai_prompt: "str"
+  cors_allowed_origins: "list(str)"
