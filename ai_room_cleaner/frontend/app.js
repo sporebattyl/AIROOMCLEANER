@@ -6,15 +6,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Determine the correct API base URL
     const getApiBaseUrl = () => {
-        // Check if we're running in Home Assistant ingress
-        const currentUrl = window.location;
-        const isIngress = currentUrl.pathname.includes('/api/hassio_ingress/');
+        const path = window.location.pathname;
+        const isIngress = path.includes('/api/hassio_ingress/');
         
         if (isIngress) {
-            // In ingress mode, API calls should go to the same origin
-            return '';
+            // Extract the base path for the Ingress session
+            return path.substring(0, path.lastIndexOf('/iframer') + 1);
         } else {
-            // Direct access mode
+            // For local dev or direct access, assume backend is at the root
             return '';
         }
     };
@@ -46,7 +45,7 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log('Response data:', data);
             return data;
         } catch (error) {
-            console.error(`API call failed for ${fullUrl}:`, error);
+            console.error(`API call to ${fullUrl} failed:`, error);
             throw error;
         }
     };

@@ -1,6 +1,6 @@
 import os
 import logging
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, APIRouter
 from fastapi.responses import HTMLResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
@@ -122,18 +122,20 @@ async def serve_js_ingress_static(addon_slug: str):
     """Serve JS file for ingress static path"""
     return await serve_js()
 
-# API ROUTES
-@app.get("/api/health")
+# API Router
+api_router = APIRouter()
+
+@api_router.get("/health")
 async def health_check():
     """Health check endpoint"""
     return {"status": "healthy", "service": "AI Room Cleaner"}
 
-@app.get("/api/tasks")
+@api_router.get("/tasks")
 async def get_tasks():
     """Get the current list of cleaning tasks"""
     return latest_tasks
 
-@app.post("/api/analyze")
+@api_router.post("/analyze")
 async def analyze_room():
     """Analyze the room for messes using AI"""
     global latest_tasks
@@ -196,10 +198,13 @@ async def analyze_room():
 # Add middleware to log all requests for debugging
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
-    logger.info(f"Request: {request.method} {request.url}")
+    logger.info(f"Request: {request.method} {request.url.path}")
     response = await call_next(request)
     logger.info(f"Response: {response.status_code}")
     return response
+
+# Include the API router
+app.include_router(api_router, prefix="/api")
 
 @app.on_event("startup")
 async def startup_event():
