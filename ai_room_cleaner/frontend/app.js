@@ -4,20 +4,51 @@ document.addEventListener('DOMContentLoaded', () => {
     const errorMessage = document.getElementById('error-message');
     const loadingIndicator = document.getElementById('loading-indicator');
 
-    const apiService = async (endpoint, options) => {
-        console.log(`Making API call to: ${endpoint}`);
-        const response = await fetch(endpoint, options);
-        console.log(`Response status: ${response.status}`);
+    // Determine the correct API base URL
+    const getApiBaseUrl = () => {
+        // Check if we're running in Home Assistant ingress
+        const currentUrl = window.location;
+        const isIngress = currentUrl.pathname.includes('/api/hassio_ingress/');
         
-        if (!response.ok) {
-            const errorText = await response.text();
-            console.error(`API Error: ${response.status} - ${errorText}`);
-            throw new Error(`HTTP error! status: ${response.status} - ${errorText}`);
+        if (isIngress) {
+            // In ingress mode, API calls should go to the same origin
+            return '';
+        } else {
+            // Direct access mode
+            return '';
         }
+    };
+
+    const apiService = async (endpoint, options = {}) => {
+        const baseUrl = getApiBaseUrl();
+        const fullUrl = `${baseUrl}${endpoint}`;
         
-        const data = await response.json();
-        console.log('Response data:', data);
-        return data;
+        console.log(`Making API call to: ${fullUrl}`);
+        
+        try {
+            const response = await fetch(fullUrl, {
+                ...options,
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...options.headers
+                }
+            });
+            
+            console.log(`Response status: ${response.status}`);
+            
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error(`API Error: ${response.status} - ${errorText}`);
+                throw new Error(`HTTP error! status: ${response.status} - ${errorText}`);
+            }
+            
+            const data = await response.json();
+            console.log('Response data:', data);
+            return data;
+        } catch (error) {
+            console.error(`API call failed for ${fullUrl}:`, error);
+            throw error;
+        }
     };
 
     const fetchTasks = async () => {
@@ -27,6 +58,7 @@ document.addEventListener('DOMContentLoaded', () => {
             updateTaskList(tasks);
         } catch (error) {
             console.error('Error fetching tasks:', error);
+            // Don't show error for initial fetch failure
         }
     };
 
@@ -53,6 +85,10 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log('Analysis complete, tasks:', messes);
             updateTaskList(messes);
             updatePerformanceStats(messes);
+            
+            // Clear any previous error messages
+            errorMessage.textContent = '';
+            
         } catch (error) {
             console.error('Error analyzing room:', error);
             errorMessage.textContent = `Failed to analyze room: ${error.message}`;
@@ -92,14 +128,25 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const health = await apiService('/api/health');
             console.log('Health check:', health);
+            
+            // Update UI to show service is healthy
+            if (health.status === 'healthy') {
+                console.log('✓ Service is healthy');
+            }
         } catch (error) {
             console.error('Health check failed:', error);
+            // Don't show error message for health check failure
         }
     };
 
+    // Event listeners
     analyzeBtn.addEventListener('click', analyzeRoom);
     
     // Initialize
+    console.log('Initializing AI Room Cleaner...');
+    console.log('Current URL:', window.location.href);
+    console.log('API Base URL:', getApiBaseUrl());
+    
     checkHealth();
     fetchTasks();
 });

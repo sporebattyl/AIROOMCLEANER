@@ -1,6 +1,6 @@
 import os
 import logging
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
@@ -52,6 +52,16 @@ async def serve_frontend():
         return FileResponse(filepath, media_type="text/html")
     else:
         return HTMLResponse(content="<h1>Frontend not found</h1>", status_code=500)
+
+# Handle ingress root path
+@app.get("/api/hassio_ingress/{path:path}", response_class=HTMLResponse)
+async def serve_ingress_root(path: str = ""):
+    """Serve the main frontend page for ingress"""
+    if not path or path == "index.html":
+        filepath = get_frontend_file("index.html")
+        if filepath:
+            return FileResponse(filepath, media_type="text/html")
+    return HTMLResponse(content="<h1>Ingress path not found</h1>", status_code=404)
 
 # Primary routes for static files (for ingress compatibility)
 @app.get("/style.css")
@@ -112,6 +122,7 @@ async def serve_js_ingress_static(addon_slug: str):
     """Serve JS file for ingress static path"""
     return await serve_js()
 
+# API ROUTES
 @app.get("/api/health")
 async def health_check():
     """Health check endpoint"""
@@ -181,6 +192,14 @@ async def analyze_room():
     except Exception as e:
         logger.error(f"Unexpected error during room analysis: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}")
+
+# Add middleware to log all requests for debugging
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    logger.info(f"Request: {request.method} {request.url}")
+    response = await call_next(request)
+    logger.info(f"Response: {response.status_code}")
+    return response
 
 @app.on_event("startup")
 async def startup_event():
