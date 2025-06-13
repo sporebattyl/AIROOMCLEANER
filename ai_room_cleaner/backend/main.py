@@ -1,6 +1,7 @@
 import os
 import logging
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, HTTPException
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from slowapi import Limiter, _rate_limit_exceeded_handler
@@ -8,7 +9,7 @@ from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 from backend.core.config import settings
 from backend.api.router import router as api_router, limiter as api_limiter
-from backend.core.exceptions import ConfigError
+from backend.core.exceptions import AppException
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -23,6 +24,32 @@ and suggest cleaning tasks. It's designed to be integrated with Home Assistant
 but can be run as a standalone service.
 """
 )
+
+# Exception Handlers
+@app.exception_handler(AppException)
+async def app_exception_handler(request: Request, exc: AppException):
+    """Custom exception handler for application-specific errors."""
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"error": exc.__class__.__name__, "message": exc.detail},
+    )
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    """Custom exception handler for FastAPI's HTTPException."""
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"error": "HTTPException", "message": exc.detail},
+    )
+
+@app.exception_handler(Exception)
+async def generic_exception_handler(request: Request, exc: Exception):
+    """Generic exception handler for any other unhandled errors."""
+    logger.error(f"An unexpected error occurred: {exc}", exc_info=True)
+    return JSONResponse(
+        status_code=500,
+        content={"error": "InternalServerError", "message": "An unexpected internal error occurred."},
+    )
 
 # Set up rate limiter
 limiter = Limiter(key_func=get_remote_address, default_limits=["100/hour"])
@@ -77,11 +104,9 @@ async def startup_event():
     else:
         logger.error(f"Frontend directory does not exist: {frontend_dir}")
     
-    try:
-        settings.validate()
-        logger.info("Essential configuration is valid.")
-    except ConfigError as e:
-        logger.warning(f"Configuration validation failed on startup: {e}")
+    # Pydantic validates on instantiation, so no need to call validate() here.
+    # If there's a config error, it will raise an exception and prevent startup.
+    logger.info("Essential configuration is valid.")
     logger.info("--- Startup Complete ---")
 
 if __name__ == "__main__":
