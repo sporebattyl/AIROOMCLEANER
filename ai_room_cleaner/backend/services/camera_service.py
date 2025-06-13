@@ -1,10 +1,8 @@
 import base64
 import httpx
-import logging
+from loguru import logger
 from backend.core.config import settings
 from backend.core.exceptions import CameraError, ConfigError
-
-logger = logging.getLogger(__name__)
 
 async def get_camera_image(camera_entity_id: str) -> str:
     """

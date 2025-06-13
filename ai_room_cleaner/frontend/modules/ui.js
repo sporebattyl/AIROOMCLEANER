@@ -8,16 +8,21 @@ const historyEmptyState = document.getElementById('history-empty-state');
 const resultsContainer = document.getElementById('results-container');
 const emptyState = document.getElementById('empty-state');
 
+const createMessItem = (task) => `
+    <li title="Reason: ${task.reason || 'N/A'}. Click to mark as complete.">
+        ${task.mess}
+    </li>
+`;
+
 export const updateMessesList = (tasks) => {
-    messesList.innerHTML = '';
-    tasks.forEach(task => {
-        const li = document.createElement('li');
-        li.textContent = task.mess;
-        li.title = `Reason: ${task.reason || 'N/A'}. Click to mark as complete.`;
-        messesList.appendChild(li);
-    });
+    if (tasks.length === 0) {
+        showEmptyState();
+        return;
+    }
+    messesList.innerHTML = tasks.map(createMessItem).join('');
     tasksCountEl.textContent = tasks.length;
     emptyState.classList.add('hidden');
+    resultsContainer.classList.remove('hidden');
     messesList.classList.remove('hidden');
 };
 
@@ -78,22 +83,21 @@ export const toggleTheme = () => {
     localStorage.setItem('theme', newTheme);
 };
 
+const createHistoryItem = (item) => `
+    <li>
+        <span>${item.date}</span>
+        <span>${item.score}%</span>
+    </li>
+`;
+
 export const updateHistoryList = (history) => {
-    historyList.innerHTML = '';
     if (history.length === 0) {
         historyEmptyState.classList.remove('hidden');
         historyList.classList.add('hidden');
     } else {
         historyEmptyState.classList.add('hidden');
         historyList.classList.remove('hidden');
-        history.forEach(item => {
-            const li = document.createElement('li');
-            li.innerHTML = `
-                <span>${item.date}</span>
-                <span>${item.score}%</span>
-            `;
-            historyList.appendChild(li);
-        });
+        historyList.innerHTML = history.map(createHistoryItem).join('');
     }
 };
 

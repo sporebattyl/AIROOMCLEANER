@@ -45,77 +45,93 @@ const storage = {
     }
 };
 
-document.addEventListener('DOMContentLoaded', () => {
-    const analyzeBtn = document.getElementById('analyze-btn');
-    const themeToggleBtn = document.getElementById('theme-toggle-btn');
-    const clearHistoryBtn = document.getElementById('clear-history-btn');
-    const messesList = document.getElementById('messes-list');
+const state = {
+    history: [],
+    currentTheme: 'light',
+};
 
-    let history = storage.get('analysisHistory', []);
-    let currentTheme = storage.get('theme', 'light');
-    document.documentElement.setAttribute('data-theme', currentTheme);
-    
-    updateHistoryList(history);
+const elements = {};
 
-    const handleAnalyzeRoom = async () => {
-        showLoading();
-        clearError();
+const setupUI = () => {
+    elements.analyzeBtn = document.getElementById('analyze-btn');
+    elements.themeToggleBtn = document.getElementById('theme-toggle-btn');
+    elements.clearHistoryBtn = document.getElementById('clear-history-btn');
+    elements.messesList = document.getElementById('messes-list');
 
-        try {
-            const result = await analyzeRoom();
-            console.log('Analysis result:', result); // Debug log
-            
-            const analysis = {
-                id: Date.now(),
-                date: new Date().toLocaleString(),
-                score: result.cleanliness_score || 50, // Fallback score
-                messes: result.tasks || [],
-            };
-            
-            history.unshift(analysis);
-            if (history.length > 10) {
-                history.pop();
-            }
-            
-            storage.set('analysisHistory', history);
+    state.history = storage.get('analysisHistory', []);
+    state.currentTheme = storage.get('theme', 'light');
 
-            if (result.tasks.length === 0) {
-                showEmptyState();
-            } else {
-                updateMessesList(result.tasks);
-            }
-            
-            updateCleanlinessScore(result.cleanliness_score || 50);
-            updateHistoryList(history);
-            showResults();
-        } catch (error) {
-            console.error('Analysis error:', error);
-            showError(`Failed to analyze room: ${error.message}`);
-        } finally {
-            hideLoading();
+    document.documentElement.setAttribute('data-theme', state.currentTheme);
+    updateHistoryList(state.history);
+};
+
+const handleAnalyzeRoom = async () => {
+    showLoading();
+    clearError();
+
+    try {
+        const result = await analyzeRoom();
+        console.log('Analysis result:', result);
+
+        const analysis = {
+            id: Date.now(),
+            date: new Date().toLocaleString(),
+            score: result.cleanliness_score || 50,
+            messes: result.tasks || [],
+        };
+
+        state.history.unshift(analysis);
+        if (state.history.length > 10) {
+            state.history.pop();
         }
-    };
 
-    const handleClearHistory = () => {
-        history = [];
-        storage.remove('analysisHistory');
-        clearHistory();
-    };
+        storage.set('analysisHistory', state.history);
 
-    const handleToggleTheme = () => {
-        currentTheme = currentTheme === 'dark' ? 'light' : 'dark';
-        document.documentElement.setAttribute('data-theme', currentTheme);
-        storage.set('theme', currentTheme);
-    };
-
-    const handleToggleTask = (e) => {
-        if (e.target.tagName === 'LI') {
-            e.target.classList.toggle('completed');
+        if (result.tasks.length === 0) {
+            showEmptyState();
+        } else {
+            updateMessesList(result.tasks);
         }
-    };
 
-    analyzeBtn.addEventListener('click', handleAnalyzeRoom);
-    themeToggleBtn.addEventListener('click', handleToggleTheme);
-    clearHistoryBtn.addEventListener('click', handleClearHistory);
-    messesList.addEventListener('click', handleToggleTask);
-});
+        updateCleanlinessScore(result.cleanliness_score || 50);
+        updateHistoryList(state.history);
+        showResults();
+    } catch (error) {
+        console.error('Analysis error:', error);
+        showError(`Failed to analyze room: ${error.message}`);
+    } finally {
+        hideLoading();
+    }
+};
+
+const handleClearHistory = () => {
+    state.history = [];
+    storage.remove('analysisHistory');
+    clearHistory();
+};
+
+const handleToggleTheme = () => {
+    state.currentTheme = state.currentTheme === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', state.currentTheme);
+    storage.set('theme', state.currentTheme);
+};
+
+const handleToggleTask = (e) => {
+    if (e.target.tagName === 'LI') {
+        e.target.classList.toggle('completed');
+    }
+};
+
+const setupEventListeners = () => {
+    elements.analyzeBtn.addEventListener('click', handleAnalyzeRoom);
+    elements.themeToggleBtn.addEventListener('click', handleToggleTheme);
+    elements.clearHistoryBtn.addEventListener('click', handleClearHistory);
+    elements.messesList.addEventListener('click', handleToggleTask);
+};
+
+const init = () => {
+    setupUI();
+    setupEventListeners();
+};
+
+document.addEventListener('DOMContentLoaded', init);

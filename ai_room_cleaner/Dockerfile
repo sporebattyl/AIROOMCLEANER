@@ -1,6 +1,7 @@
-FROM python:3.12-slim-bookworm
+# Stage 1: Build stage
+FROM python:3.12-slim-bookworm AS builder
 
-# Install bashio for Home Assistant addon support
+# Install bashio and build dependencies
 RUN apt-get update && apt-get install -y \
     bash \
     dos2unix \
@@ -19,27 +20,40 @@ RUN curl -J -L -o /tmp/bashio.tar.gz \
 
 WORKDIR /app
 
-# Copy requirements first for better Docker layer caching
+# Copy and install Python dependencies
 COPY requirements.txt .
-
-# Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy all application files
+# Copy application code
 COPY . .
 
-# Explicitly copy frontend files to ensure they're included
-COPY frontend/ ./frontend/
-
 # Fix line endings and permissions
-RUN dos2unix /app/run.sh
-RUN chmod +x /app/run.sh
+RUN dos2unix /app/run.sh && chmod +x /app/run.sh
 
-# List files to verify they were copied (for debugging)
-RUN echo "=== Files in /app ===" && find /app -type f -name "*.html" -o -name "*.css" -o -name "*.js" | head -20
 
-# Make port 8000 available to the world outside this container
+# Stage 2: Production stage
+FROM python:3.12-slim-bookworm
+
+# Install runtime dependencies
+# bash is for bashio, curl/jq might be used by bashio scripts
+RUN apt-get update && apt-get install -y \
+    bash \
+    curl \
+    jq \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Copy installed Python dependencies from builder
+COPY --from=builder /usr/local/lib/python3.12/site-packages/ /usr/local/lib/python3.12/site-packages/
+
+# Copy bashio from builder
+COPY --from=builder /usr/lib/bashio /usr/lib/bashio
+COPY --from=builder /usr/bin/bashio /usr/bin/bashio
+
+# Copy application from builder
+COPY --from=builder /app /app
+
 EXPOSE 8000
 
-# Run the startup script when the container launches
 CMD ["/app/run.sh"]

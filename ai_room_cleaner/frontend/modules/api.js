@@ -1,8 +1,13 @@
 const API_BASE_URL = "api";
 
+const getApiUrl = (endpoint) => {
+    // URL constructor for robust URL creation
+    const url = new URL(`${API_BASE_URL}${endpoint}`, window.location.origin);
+    return url.href;
+};
+
 const apiService = async (endpoint, options = {}) => {
-    // Simple string concatenation instead of URL constructor
-    const url = `${API_BASE_URL}${endpoint}`;
+    const url = getApiUrl(endpoint);
 
     try {
         const response = await fetch(url, {

@@ -1,5 +1,6 @@
 import os
-import logging
+from loguru import logger
+import sys
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -10,10 +11,12 @@ from slowapi.errors import RateLimitExceeded
 from backend.core.config import settings
 from backend.api.router import router as api_router, limiter as api_limiter
 from backend.core.exceptions import AppException
+from backend.core.state import State
+from backend.services.ai_service import AIService
 
 # Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+logger.remove()
+logger.add(sys.stderr, format="{time} {level} {message}", serialize=True, level="INFO")
 
 app = FastAPI(
     title="AI Room Cleaner",
@@ -45,7 +48,7 @@ async def http_exception_handler(request: Request, exc: HTTPException):
 @app.exception_handler(Exception)
 async def generic_exception_handler(request: Request, exc: Exception):
     """Generic exception handler for any other unhandled errors."""
-    logger.error(f"An unexpected error occurred: {exc}", exc_info=True)
+    logger.exception("An unexpected error occurred")
     return JSONResponse(
         status_code=500,
         content={"error": "InternalServerError", "message": "An unexpected internal error occurred."},
@@ -88,8 +91,19 @@ async def log_requests(request: Request, call_next):
 
 @app.on_event("startup")
 async def startup_event():
-    """Log startup information and check configurations."""
+    """Log startup information and initialize application state."""
     logger.info("--- AI Room Cleaner Starting Up ---")
+    
+    # Initialize services and state
+    try:
+        ai_service = AIService()
+        app.state.state = State(ai_service=ai_service)
+        logger.info("AI service and application state initialized.")
+    except Exception as e:
+        logger.error(f"Failed to initialize application state: {e}", exc_info=True)
+        # Depending on the desired behavior, you might want to exit the application
+        # if the state cannot be initialized. For now, we just log the error.
+        
     logger.info(f"Camera Entity: {settings.camera_entity or 'Not set'}")
     logger.info(f"AI Model: {settings.ai_model or 'Not set'}")
     logger.info(f"Supervisor URL: {settings.supervisor_url}")
@@ -104,8 +118,6 @@ async def startup_event():
     else:
         logger.error(f"Frontend directory does not exist: {frontend_dir}")
     
-    # Pydantic validates on instantiation, so no need to call validate() here.
-    # If there's a config error, it will raise an exception and prevent startup.
     logger.info("Essential configuration is valid.")
     logger.info("--- Startup Complete ---")
 
