@@ -21,6 +21,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Include the API router
+app.include_router(api_router, prefix="/api")
+
 # Mount the frontend directory
 frontend_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "frontend"))
 if os.path.exists(frontend_dir):
@@ -36,9 +39,6 @@ async def log_requests(request: Request, call_next):
     response = await call_next(request)
     logger.info(f"Response: {response.status_code}")
     return response
-
-# Include the API router
-app.include_router(api_router, prefix="/api")
 
 @app.on_event("startup")
 async def startup_event():
