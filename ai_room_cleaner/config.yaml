@@ -21,9 +21,10 @@ options:
   update_frequency: 60
   supervisor_url: "http://supervisor/core/api"
   ai_prompt: >-
-    Analyze this room image and identify any items that are out of place or contributing to messiness.
-    For each item, describe what needs to be cleaned or organized.
-    Return the output as a JSON array of strings, with each string being a specific cleaning task.
+    Analyze this room image for cleanliness. Identify items that are out of place or messy.
+    Return the output as a JSON object with a single key "tasks".
+    The "tasks" key should contain a list of objects, where each object has two keys: "mess" (a string describing the task) and "reason" (a brief explanation).
+    Example: {"tasks": [{"mess": "Clothes on the floor", "reason": "Reduces tidiness and can wrinkle clothes."}]}
   cors_allowed_origins:
     - "*"
 schema:

@@ -1,4 +1,4 @@
-const API_BASE_URL = "/api";
+const API_BASE_URL = "api";
 
 const apiService = async (endpoint, options = {}) => {
     // Simple string concatenation instead of URL constructor
