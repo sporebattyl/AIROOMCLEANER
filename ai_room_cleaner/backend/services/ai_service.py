@@ -1,12 +1,29 @@
-import io
 import base64
+import io
 import json
 import logging
+import re
 from typing import List
+
+# Optional dependency imports
+try:
+    import google.generativeai as genai
+    from PIL import Image
+except ImportError:
+    pass  # Existence will be checked at runtime.
+
+try:
+    import openai
+except ImportError:
+    pass  # Existence will be checked at runtime.
+
+
 from backend.core.config import settings
 from backend.core.exceptions import AIError, ConfigError
 
 logger = logging.getLogger(__name__)
+
+_gemini_configured = False
 
 def analyze_room_for_mess(image_base64: str) -> List[dict]:
     """
@@ -23,51 +40,63 @@ def analyze_room_for_mess(image_base64: str) -> List[dict]:
     try:
         model_lower = settings.ai_model.lower()
         if "gemini" in model_lower or "google" in model_lower:
+            if "genai" not in globals() or "Image" not in globals():
+                raise ConfigError(
+                    "Google AI libraries not installed. Please run: pip install google-generativeai pillow"
+                )
             if not settings.google_api_key:
                 raise ConfigError("Google API key is not configured for Gemini model.")
             return _analyze_with_gemini(image_base64)
+
         elif "gpt" in model_lower or "openai" in model_lower:
+            if "openai" not in globals():
+                raise ConfigError(
+                    "OpenAI library not installed. Please run: pip install openai"
+                )
             if not settings.openai_api_key:
                 raise ConfigError("OpenAI API key is not configured for GPT model.")
             return _analyze_with_openai(image_base64)
         else:
             raise AIError(f"Unsupported AI model: {settings.ai_model}")
-            
-    except ImportError as e:
-        logger.error(f"Required AI library not available: {e}")
-        raise ConfigError(f"Required AI library not installed for {settings.ai_model}") from e
+
     except Exception as e:
         logger.error(f"Unexpected error during AI analysis: {e}", exc_info=True)
         raise AIError("An unexpected error occurred during analysis.") from e
 
 def _analyze_with_gemini(image_base64: str) -> List[dict]:
     """Analyze image using Google Gemini."""
+    global _gemini_configured
     try:
-        import google.generativeai as genai
-        from PIL import Image
-        
-        genai.configure(api_key=settings.google_api_key)
-        
+        if not _gemini_configured:
+            genai.configure(api_key=settings.google_api_key)  # type: ignore
+            _gemini_configured = True
+
         image_bytes = base64.b64decode(image_base64)
-        image = Image.open(io.BytesIO(image_bytes))
-        
-        model = genai.GenerativeModel(settings.ai_model)
-        
-        response = model.generate_content([settings.ai_prompt, image])
-        
+        img = Image.open(io.BytesIO(image_bytes))
+
+        model = genai.GenerativeModel(settings.ai_model)  # type: ignore
+
+        response = model.generate_content([settings.ai_prompt, img])
+
         # The .text property can raise a ValueError if no text is found.
         # It's better to access parts and handle it gracefully.
         if not response.parts:
+            if response.prompt_feedback.block_reason:
+                raise AIError(
+                    f"Gemini request was blocked. Reason: {response.prompt_feedback.block_reason}"
+                )
             raise AIError("Gemini returned an empty response.")
-        
-        text_content = ''.join(part.text for part in response.parts if hasattr(part, 'text'))
+
+        text_content = "".join(
+            part.text for part in response.parts if hasattr(part, "text")
+        )
         if not text_content:
             raise AIError("Gemini returned a response with no text content.")
 
         logger.info(f"Raw Gemini response: {text_content}")
-        
+
         return _parse_ai_response(text_content)
-            
+
     except Exception as e:
         logger.error(f"Error with Gemini analysis: {e}", exc_info=True)
         raise AIError("Failed to analyze image with Gemini.") from e
@@ -75,10 +104,8 @@ def _analyze_with_gemini(image_base64: str) -> List[dict]:
 def _analyze_with_openai(image_base64: str) -> List[dict]:
     """Analyze image using OpenAI GPT."""
     try:
-        import openai
-        
         client = openai.OpenAI(api_key=settings.openai_api_key)
-        
+
         response = client.chat.completions.create(
             model=settings.ai_model,
             messages=[
@@ -116,17 +143,10 @@ def _parse_ai_response(text_content: str) -> List[dict]:
     Example: {"tasks": [{"mess": "clothes on floor", "reason": "Reduces cleanliness"}]}
     """
     logger.debug(f"Attempting to parse AI response: {text_content}")
-    # Handle markdown code blocks
-    if "```json" in text_content:
-        start_index = text_content.find("```json") + len("```json")
-        end_index = text_content.rfind("```")
-        if end_index > start_index:
-            text_content = text_content[start_index:end_index]
-    elif "```" in text_content:
-        start_index = text_content.find("```") + 3
-        end_index = text_content.rfind("```")
-        if end_index > start_index:
-            text_content = text_content[start_index:end_index]
+    # Use regex to robustly extract content from markdown code blocks
+    match = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", text_content)
+    if match:
+        text_content = match.group(1)
 
     try:
         data = json.loads(text_content.strip())
