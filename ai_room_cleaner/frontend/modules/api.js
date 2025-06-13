@@ -1,7 +1,8 @@
 const API_BASE_URL = "/api";
 
 const apiService = async (endpoint, options = {}) => {
-    const url = new URL(endpoint, API_BASE_URL).href;
+    // Simple string concatenation instead of URL constructor
+    const url = `${API_BASE_URL}${endpoint}`;
 
     try {
         const response = await fetch(url, {
