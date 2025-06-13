@@ -71,6 +71,14 @@
         <p>&copy; 2025 AI Room Cleaner. All rights reserved.</p>
     </footer>
 
+<script>
+    window.addEventListener('error', function(e) {
+        if (e.filename && e.filename.includes('modules/')) {
+            console.error('Module loading failed:', e);
+            // Fallback to inline script or show error message
+        }
+    });
+    </script>
     <script src="app.js" type="module"></script>
 </body>
 </html>

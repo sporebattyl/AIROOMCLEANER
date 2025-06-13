@@ -1,6 +1,8 @@
 import logging
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from fastapi.concurrency import run_in_threadpool
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 from backend.core.config import settings
 from backend.core.state import app_state
 from backend.services.ai_service import analyze_room_for_mess
@@ -9,6 +11,7 @@ from backend.core.exceptions import AIError, CameraError, ConfigError
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+limiter = Limiter(key_func=get_remote_address)
 
 @router.get("/health")
 async def health_check():
@@ -21,14 +24,19 @@ async def get_tasks():
     return await app_state.get_tasks()
 
 @router.post("/analyze")
-async def analyze_room():
+@router.post("/analyze")
+@limiter.limit("5/minute")
+async def analyze_room(request: Request):
     """Analyze the room for messes using AI"""
     try:
         logger.info("=== Starting room analysis ===")
         settings.validate()
         
+        if not settings.camera_entity:
+            raise HTTPException(status_code=500, detail="Camera entity ID is not configured.")
+
         logger.info("Attempting to get camera image...")
-        image_base64 = await get_camera_image()
+        image_base64 = await get_camera_image(settings.camera_entity)
         logger.info(f"Successfully retrieved camera image (length: {len(image_base64)} characters)")
         
         logger.info("Starting AI analysis in a background thread...")

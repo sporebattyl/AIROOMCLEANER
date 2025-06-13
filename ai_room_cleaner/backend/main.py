@@ -3,22 +3,41 @@ import logging
 from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 from backend.core.config import settings
-from backend.api.router import router as api_router
+from backend.api.router import router as api_router, limiter as api_limiter
+from backend.core.exceptions import ConfigError
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="AI Room Cleaner", version="0.1.0")
+app = FastAPI(
+    title="AI Room Cleaner",
+    version="0.1.0",
+    description="""
+A smart home automation project that uses AI to identify messes in a room
+and suggest cleaning tasks. It's designed to be integrated with Home Assistant
+but can be run as a standalone service.
+"""
+)
 
-# Add CORS middleware for Home Assistant ingress
+# Set up rate limiter
+limiter = Limiter(key_func=get_remote_address, default_limits=["100/hour"])
+app.state.limiter = api_limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+# Add CORS middleware
+# In a production environment, this should be a specific list of trusted domains.
+# For development, we allow localhost and 127.0.0.1.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_allowed_origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST"],
+    allow_headers=["Content-Type", "Authorization"],
 )
 
 # Include the API router
@@ -61,7 +80,7 @@ async def startup_event():
     try:
         settings.validate()
         logger.info("Essential configuration is valid.")
-    except ValueError as e:
+    except ConfigError as e:
         logger.warning(f"Configuration validation failed on startup: {e}")
     logger.info("--- Startup Complete ---")
 

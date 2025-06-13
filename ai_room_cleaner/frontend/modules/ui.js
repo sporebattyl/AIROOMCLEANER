@@ -47,12 +47,24 @@ export const hideLoading = () => {
     loadingOverlay.classList.add('hidden');
 };
 
-export const showError = (message) => {
-    errorToast.textContent = message;
+export const showError = (error) => {
+    let errorMessage = 'An unexpected error occurred.';
+    if (typeof error === 'string') {
+        errorMessage = error;
+    } else if (error instanceof Error) {
+        errorMessage = error.message;
+        if (error.response && error.response.data && error.response.data.detail) {
+            errorMessage += ` ${error.response.data.detail}`;
+        }
+        if (error.stack) {
+            console.error(error.stack);
+        }
+    }
+    errorToast.textContent = errorMessage;
     errorToast.classList.remove('hidden');
     setTimeout(() => {
         errorToast.classList.add('hidden');
-    }, 3000);
+    }, 5000); // Increased timeout for better readability
 };
 
 export const clearError = () => {

@@ -1,3 +1,8 @@
+// Global handler for unhandled promise rejections
+window.addEventListener('unhandledrejection', event => {
+    console.error('Unhandled promise rejection:', event.reason);
+    // Optionally, you could show a user-facing error message here
+});
 import { analyzeRoom } from './modules/api.js';
 import { 
     updateMessesList, 
@@ -13,30 +18,42 @@ import {
     showEmptyState
 } from './modules/ui.js';
 
+const storage = {
+    get: (key, defaultValue = null) => {
+        try {
+            const value = localStorage.getItem(key);
+            return value ? JSON.parse(value) : defaultValue;
+        } catch {
+            return defaultValue;
+        }
+    },
+    set: (key, value) => {
+        try {
+            localStorage.setItem(key, JSON.stringify(value));
+            return true;
+        } catch {
+            return false;
+        }
+    },
+    remove: (key) => {
+        try {
+            localStorage.removeItem(key);
+            return true;
+        } catch {
+            return false;
+        }
+    }
+};
+
 document.addEventListener('DOMContentLoaded', () => {
     const analyzeBtn = document.getElementById('analyze-btn');
     const themeToggleBtn = document.getElementById('theme-toggle-btn');
     const clearHistoryBtn = document.getElementById('clear-history-btn');
     const messesList = document.getElementById('messes-list');
 
-    // Use in-memory storage instead of localStorage for better compatibility
-    let history = [];
-    let currentTheme = 'light';
-    
-    // Try to load from localStorage if available, but don't fail if not
-    try {
-        const savedHistory = localStorage.getItem('analysisHistory');
-        if (savedHistory) {
-            history = JSON.parse(savedHistory);
-        }
-        const savedTheme = localStorage.getItem('theme');
-        if (savedTheme) {
-            currentTheme = savedTheme;
-            document.documentElement.setAttribute('data-theme', currentTheme);
-        }
-    } catch (error) {
-        console.warn('localStorage not available, using in-memory storage');
-    }
+    let history = storage.get('analysisHistory', []);
+    let currentTheme = storage.get('theme', 'light');
+    document.documentElement.setAttribute('data-theme', currentTheme);
     
     updateHistoryList(history);
 
@@ -60,12 +77,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 history.pop();
             }
             
-            // Try to save to localStorage if available
-            try {
-                localStorage.setItem('analysisHistory', JSON.stringify(history));
-            } catch (error) {
-                console.warn('Could not save to localStorage:', error);
-            }
+            storage.set('analysisHistory', history);
 
             if (result.tasks.length === 0) {
                 showEmptyState();
@@ -86,22 +98,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const handleClearHistory = () => {
         history = [];
-        try {
-            localStorage.removeItem('analysisHistory');
-        } catch (error) {
-            console.warn('Could not clear localStorage:', error);
-        }
+        storage.remove('analysisHistory');
         clearHistory();
     };
 
     const handleToggleTheme = () => {
         currentTheme = currentTheme === 'dark' ? 'light' : 'dark';
         document.documentElement.setAttribute('data-theme', currentTheme);
-        try {
-            localStorage.setItem('theme', currentTheme);
-        } catch (error) {
-            console.warn('Could not save theme to localStorage:', error);
-        }
+        storage.set('theme', currentTheme);
     };
 
     const handleToggleTask = (e) => {

@@ -6,17 +6,21 @@ from backend.core.exceptions import CameraError, ConfigError
 
 logger = logging.getLogger(__name__)
 
-async def get_camera_image() -> str:
+async def get_camera_image(camera_entity_id: str) -> str:
     """
     Fetches the image from the specified Home Assistant camera entity.
     Raises:
+        ValueError: If the camera_entity_id is invalid.
         ConfigError: If required configuration is missing.
         CameraError: If the image cannot be fetched.
     """
-    if not settings.camera_entity or not settings.supervisor_token:
-        raise ConfigError("Camera entity or supervisor token is not configured.")
+    if not camera_entity_id or not isinstance(camera_entity_id, str):
+        raise ValueError("Camera entity ID must be a non-empty string.")
 
-    api_url = f"{settings.supervisor_url}/camera_proxy/{settings.camera_entity}"
+    if not settings.supervisor_token:
+        raise ConfigError("Supervisor token is not configured.")
+
+    api_url = f"{settings.supervisor_url}/camera_proxy/{camera_entity_id}"
     headers = {"Authorization": f"Bearer {settings.supervisor_token}"}
 
     try:
