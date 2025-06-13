@@ -37,7 +37,15 @@ async def analyze_room():
         
         await app_state.set_tasks(messes)
         
-        return {"tasks": messes}
+        # Calculate a simple cleanliness score based on number of messes
+        total_possible_score = 100
+        mess_penalty = min(len(messes) * 10, 80)  # Max 80 point penalty
+        cleanliness_score = max(total_possible_score - mess_penalty, 20)  # Min score of 20
+        
+        return {
+            "tasks": messes,
+            "cleanliness_score": cleanliness_score
+        }
         
     except (ConfigError, CameraError, AIError) as e:
         logger.error(f"Error during room analysis: {e}", exc_info=True)
