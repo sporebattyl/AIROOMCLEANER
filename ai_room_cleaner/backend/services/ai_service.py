@@ -12,9 +12,9 @@ import re
 from typing import List
 
 import bleach
-from PIL import Image
 
 # Optional dependency imports for AI providers.
+from backend.utils.image_processing import resize_image_with_vips, configure_pyvips
 # These are wrapped in try-except blocks to allow the application to run
 # even if only one provider's libraries are installed.
 try:
@@ -43,6 +43,7 @@ class AIService:
         self.MAX_IMAGE_SIZE_MB = settings.max_image_size_mb
         self.MAX_IMAGE_DIMENSION = settings.max_image_dimension
         self._initialize_clients()
+        configure_pyvips(self.settings)
 
     def _initialize_clients(self):
         if not self.settings.ai_model:
@@ -93,26 +94,34 @@ class AIService:
         logger.info(f"Using AI model: {self.settings.ai_model}")
         try:
             image_bytes = base64.b64decode(image_base64)
-            with Image.open(io.BytesIO(image_bytes)) as img:
-                optimized_img = self._optimize_image(img)
-                sanitized_prompt = self._sanitize_prompt(self.settings.ai_prompt)
-                model_lower = self.settings.ai_model.lower()
+            
+            # Use the new vips utility for resizing
+            resized_image_bytes = resize_image_with_vips(image_bytes, self.settings)
+            
+            # Since we removed Pillow, we will pass the image bytes directly
+            # to the analysis functions. We will need to refactor them to
+            # handle bytes instead of a Pillow Image object.
+            
+            sanitized_prompt = self._sanitize_prompt(self.settings.ai_prompt)
+            model_lower = self.settings.ai_model.lower()
 
-                if "gemini" in model_lower or "google" in model_lower:
-                    return await self._analyze_with_gemini(optimized_img, sanitized_prompt)
-                elif "gpt" in model_lower or "openai" in model_lower:
-                    return await self._analyze_with_openai(optimized_img, sanitized_prompt)
-                else:
-                    raise AIError(f"Unsupported or unrecognized AI model: {self.settings.ai_model}")
+            if "gemini" in model_lower or "google" in model_lower:
+                return await self._analyze_with_gemini(resized_image_bytes, sanitized_prompt)
+            elif "gpt" in model_lower or "openai" in model_lower:
+                return await self._analyze_with_openai(resized_image_bytes, sanitized_prompt)
+            else:
+                raise AIError(f"Unsupported or unrecognized AI model: {self.settings.ai_model}")
         except Exception as e:
             logger.error(f"Failed to decode or process image: {e}", exc_info=True)
             raise AIError("Invalid image format or processing error.")
 
-    async def _analyze_with_gemini(self, image: Image.Image, prompt: str) -> List[dict]:
+    async def _analyze_with_gemini(self, image_bytes: bytes, prompt: str) -> List[dict]:
         if not self.gemini_client:
             raise ConfigError("Gemini client not initialized.")
         try:
-            response = await self.gemini_client.generate_content_async([prompt, image])
+            # The gemini client can accept image bytes directly
+            image_parts = [{"mime_type": "image/jpeg", "data": image_bytes}]
+            response = await self.gemini_client.generate_content_async([prompt, image_parts])
             if not response.parts:
                 if response.prompt_feedback and response.prompt_feedback.block_reason:
                     reason = f"Content blocked by Gemini. Reason: {response.prompt_feedback.block_reason}"
@@ -130,13 +139,11 @@ class AIService:
             logger.error(f"Error with Gemini analysis: {e}", exc_info=True)
             raise AIError("Failed to analyze image with Gemini.") from e
 
-    async def _analyze_with_openai(self, image: Image.Image, prompt: str) -> List[dict]:
+    async def _analyze_with_openai(self, image_bytes: bytes, prompt: str) -> List[dict]:
         if not self.openai_client:
             raise ConfigError("OpenAI client not initialized.")
         try:
-            buffer = io.BytesIO()
-            image.save(buffer, format="JPEG")
-            image_base64 = base64.b64encode(buffer.getvalue()).decode('utf-8')
+            image_base64 = base64.b64encode(image_bytes).decode('utf-8')
 
             response = await self.openai_client.chat.completions.create(
                 model=self.settings.ai_model,
@@ -163,15 +170,7 @@ class AIService:
     def _sanitize_prompt(self, prompt: str) -> str:
         return bleach.clean(prompt, tags=[], attributes={}, strip=True)
 
-    def _optimize_image(self, img: Image.Image) -> Image.Image:
-        # Check size based on a rough estimation of bytes per pixel
-        # This is not perfect but avoids saving to buffer just for a size check.
-        estimated_size = img.width * img.height * 4  # RGBA
-        if estimated_size > self.MAX_IMAGE_SIZE_MB * 1024 * 1024 or \
-           img.width > self.MAX_IMAGE_DIMENSION or img.height > self.MAX_IMAGE_DIMENSION:
-            logger.info("Image is large, resizing...")
-            img.thumbnail((self.MAX_IMAGE_DIMENSION, self.MAX_IMAGE_DIMENSION))
-        return img
+    # The _optimize_image function is no longer needed as resizing is now handled by the vips utility.
 
     def _parse_ai_response(self, text_content: str) -> List[dict]:
         logger.debug(f"Attempting to parse AI response: {text_content}")

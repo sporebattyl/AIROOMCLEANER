@@ -70,7 +70,7 @@ class Settings(BaseSettings):
         alias="HISTORY_FILE_PATH",
         description="The file path to store analysis history."
     )
-max_image_size_mb: int = Field(
+    max_image_size_mb: int = Field(
         default=1,
         alias="MAX_IMAGE_SIZE_MB",
         description="Max image file size in megabytes."
@@ -79,6 +79,23 @@ max_image_size_mb: int = Field(
         default=2048,
         alias="MAX_IMAGE_DIMENSION",
         description="Max width or height for an image."
+    )
+
+    # VIPS configuration for memory and performance tuning.
+    vips_concurrency: int = Field(
+        default=4,
+        alias="VIPS_CONCURRENCY",
+        description="Number of worker threads for vips operations."
+    )
+    vips_cache_max: int = Field(
+        default=100,
+        alias="VIPS_CACHE_MAX_MEM",
+        description="Max memory for vips operation cache in MB."
+    )
+    high_risk_dimension_threshold: int = Field(
+        default=8000,
+        alias="HIGH_RISK_DIMENSION_THRESHOLD",
+        description="Image dimension above which aggressive downsampling is triggered."
     )
 
     @model_validator(mode='before')
