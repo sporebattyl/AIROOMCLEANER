@@ -3,7 +3,7 @@ window.addEventListener('unhandledrejection', event => {
     console.error('Unhandled promise rejection:', event.reason);
     // Optionally, you could show a user-facing error message here
 });
-import { analyzeRoom } from './modules/api.js';
+import { analyzeRoom, getHistory } from './modules/api.js';
 import { 
     updateMessesList, 
     updateCleanlinessScore, 
@@ -23,7 +23,8 @@ const storage = {
         try {
             const value = localStorage.getItem(key);
             return value ? JSON.parse(value) : defaultValue;
-        } catch {
+        } catch (error) {
+            console.warn(`Could not read '${key}' from localStorage:`, error);
             return defaultValue;
         }
     },
@@ -31,7 +32,8 @@ const storage = {
         try {
             localStorage.setItem(key, JSON.stringify(value));
             return true;
-        } catch {
+        } catch (error) {
+            console.warn(`Could not write '${key}' to localStorage:`, error);
             return false;
         }
     },
@@ -39,7 +41,8 @@ const storage = {
         try {
             localStorage.removeItem(key);
             return true;
-        } catch {
+        } catch (error) {
+            console.warn(`Could not remove '${key}' from localStorage:`, error);
             return false;
         }
     }
@@ -52,17 +55,31 @@ const state = {
 
 const elements = {};
 
-const setupUI = () => {
+const setupUI = async () => {
     elements.analyzeBtn = document.getElementById('analyze-btn');
     elements.themeToggleBtn = document.getElementById('theme-toggle-btn');
     elements.clearHistoryBtn = document.getElementById('clear-history-btn');
     elements.messesList = document.getElementById('messes-list');
 
-    state.history = storage.get('analysisHistory', []);
-    state.currentTheme = storage.get('theme', 'light');
+    // Disable clear history button as there is no backend endpoint for it yet.
+    elements.clearHistoryBtn.disabled = true;
+    elements.clearHistoryBtn.title = "This feature is not available yet.";
 
+
+    state.currentTheme = storage.get('theme', 'light');
     document.documentElement.setAttribute('data-theme', state.currentTheme);
-    updateHistoryList(state.history);
+
+    await loadHistory();
+};
+
+const loadHistory = async () => {
+    try {
+        const history = await getHistory();
+        state.history = history;
+        updateHistoryList(state.history);
+    } catch (error) {
+        showError("Could not load analysis history.");
+    }
 };
 
 const handleAnalyzeRoom = async () => {
@@ -73,19 +90,11 @@ const handleAnalyzeRoom = async () => {
         const result = await analyzeRoom();
         console.log('Analysis result:', result);
 
-        const analysis = {
-            id: Date.now(),
-            date: new Date().toLocaleString(),
-            score: result.cleanliness_score || 50,
-            messes: result.tasks || [],
-        };
-
-        state.history.unshift(analysis);
-        if (state.history.length > 10) {
+        // Prepend new result to history for immediate UI update
+        state.history.unshift(result);
+        if (state.history.length > 50) {
             state.history.pop();
         }
-
-        storage.set('analysisHistory', state.history);
 
         if (result.tasks.length === 0) {
             showEmptyState();
@@ -93,21 +102,21 @@ const handleAnalyzeRoom = async () => {
             updateMessesList(result.tasks);
         }
 
-        updateCleanlinessScore(result.cleanliness_score || 50);
+        updateCleanlinessScore(result.cleanliness_score || 0);
         updateHistoryList(state.history);
         showResults();
+        hideLoading();
     } catch (error) {
         console.error('Analysis error:', error);
-        showError(`Failed to analyze room: ${error.message}`);
-    } finally {
         hideLoading();
+        showError(error, handleAnalyzeRoom);
     }
 };
 
 const handleClearHistory = () => {
-    state.history = [];
-    storage.remove('analysisHistory');
-    clearHistory();
+    // This function is currently disabled.
+    // To re-enable, a backend endpoint to clear the history is needed.
+    console.warn("Clear history is disabled.");
 };
 
 const handleToggleTheme = () => {

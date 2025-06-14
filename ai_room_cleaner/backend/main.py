@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
-from backend.core.config import settings
+from backend.core.config import get_settings
 from backend.api.router import router as api_router, limiter as api_limiter
 from backend.core.exceptions import AppException
 from backend.core.state import State
@@ -64,7 +64,7 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 # For development, we allow localhost and 127.0.0.1.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_allowed_origins,
+    allow_origins=get_settings().cors_allowed_origins,
     allow_credentials=True,
     allow_methods=["GET", "POST"],
     allow_headers=["Content-Type", "Authorization"],
@@ -96,6 +96,7 @@ async def startup_event():
     
     # Initialize services and state
     try:
+        settings = get_settings()
         ai_service = AIService()
         app.state.state = State(ai_service=ai_service)
         logger.info("AI service and application state initialized.")
@@ -104,8 +105,10 @@ async def startup_event():
         # Depending on the desired behavior, you might want to exit the application
         # if the state cannot be initialized. For now, we just log the error.
         
+    settings = get_settings()
     logger.info(f"Camera Entity: {settings.camera_entity or 'Not set'}")
     logger.info(f"AI Model: {settings.ai_model or 'Not set'}")
+    logger.info(f"API Key configured: {bool(settings.api_key)}")
     logger.info(f"Supervisor URL: {settings.supervisor_url}")
     
     # Check for frontend files

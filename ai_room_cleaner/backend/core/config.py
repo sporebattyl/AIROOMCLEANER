@@ -1,7 +1,8 @@
 import logging
+from functools import lru_cache
 from typing import Optional, List, Any, Dict
 
-from pydantic import Field, root_validator, SecretStr
+from pydantic import Field, model_validator, SecretStr, HttpUrl
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 logger = logging.getLogger(__name__)
@@ -46,8 +47,8 @@ class Settings(BaseSettings):
         alias="AI_MODEL",
         description="The specific AI model to use for image analysis."
     )
-    supervisor_url: str = Field(
-        "http://supervisor/core/api",
+    supervisor_url: HttpUrl = Field(
+        default=HttpUrl("http://supervisor/core/api"),
         alias="SUPERVISOR_URL",
         description="URL for the Home Assistant Supervisor API."
     )
@@ -60,30 +61,38 @@ class Settings(BaseSettings):
         description="The instruction or prompt for the AI to perform its analysis."
     )
     cors_allowed_origins: List[str] = Field(
-        ["*"],
+        default=["http://localhost", "http://localhost:8000", "http://127.0.0.1:8000"],
         alias="CORS_ALLOWED_ORIGINS",
         description="A list of origins that are allowed to make cross-origin requests."
     )
 
-    @root_validator(skip_on_failure=True)
-    def set_and_validate_api_key(cls, values: Dict[str, Any]) -> Dict[str, Any]:
+    @model_validator(mode='before')
+    @classmethod
+    def set_and_validate_api_key(cls, values: Any) -> Any:
         """
         Validates that at least one API key is provided and sets the primary 'api_key'
         to be used by the application, preferring Google's key if both are set.
         """
-        google_key = values.get("google_api_key")
-        openai_key = values.get("openai_api_key")
-
-        if google_key:
-            values["api_key"] = google_key
-        elif openai_key:
-            values["api_key"] = openai_key
-
-        if not values.get("api_key"):
-            raise ValueError("An AI provider API key is required. Please set either GOOGLE_API_KEY or OPENAI_API_KEY.")
-
+        if isinstance(values, dict):
+            google_key = values.get("google_api_key")
+            openai_key = values.get("openai_api_key")
+    
+            if google_key:
+                values["api_key"] = google_key
+            elif openai_key:
+                values["api_key"] = openai_key
+    
+            if not values.get("api_key"):
+                raise ValueError("An AI provider API key is required. Please set either GOOGLE_API_KEY or OPENAI_API_KEY.")
+    
         return values
 
 
-# Create a single, globally accessible instance of the settings.
-settings = Settings()
+@lru_cache()
+def get_settings(**kwargs) -> Settings:
+    """
+    Returns a cached instance of the Settings object.
+    The lru_cache decorator ensures that the Settings object is only created once.
+    Accepts keyword arguments for testing purposes.
+    """
+    return Settings(**kwargs)

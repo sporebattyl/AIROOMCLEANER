@@ -1,10 +1,11 @@
+import datetime
 from loguru import logger
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import JSONResponse
 from fastapi.concurrency import run_in_threadpool
 from slowapi import Limiter
 from slowapi.util import get_remote_address
-from backend.core.config import settings
+from backend.core.config import get_settings
 from backend.core.state import State
 from backend.services.camera_service import get_camera_image
 from backend.core.exceptions import AppException, AIError, CameraError, ConfigError
@@ -13,46 +14,68 @@ router = APIRouter()
 limiter = Limiter(key_func=get_remote_address)
 
 @router.get("/health")
-async def health_check():
-    """Health check endpoint"""
-    return {"status": "healthy", "service": "AI Room Cleaner"}
-
-@router.get("/tasks")
-async def get_tasks(request: Request):
-    """Get the current list of cleaning tasks"""
+async def health_check(request: Request):
+    """Health check endpoint for the service and its dependencies."""
     state: State = request.app.state.state
-    # This is a placeholder. The original implementation had a get_tasks method,
-    # which is not part of the new State class. This will need to be re-implemented
-    # if task storage is still a requirement.
-    return {"message": "Task endpoint not fully implemented yet."}
+    ai_service_health = await state.ai_service.health_check()
+    
+    overall_status = "healthy"
+    if ai_service_health["status"] != "ok":
+        overall_status = "degraded"
+
+    return {
+        "status": overall_status,
+        "service": "AI Room Cleaner",
+        "dependencies": {
+            "ai_service": ai_service_health
+        }
+    }
+
+@router.get("/history")
+async def get_history(request: Request):
+    """Get the analysis history"""
+    state: State = request.app.state.state
+    return state.get_history()
 
 @router.post("/analyze")
 @limiter.limit("5/minute")
 async def analyze_room(request: Request):
     """Analyze the room for messes using AI"""
     logger.info("=== Starting room analysis ===")
-    state: State = request.app.state.state
+    try:
+        state: State = request.app.state.state
 
-    if not settings.camera_entity:
-        raise ConfigError(detail="Camera entity ID is not configured.")
+        settings = get_settings()
+        if not settings.camera_entity:
+            raise ConfigError(detail="Camera entity ID is not configured.")
 
-    logger.info("Attempting to get camera image...")
-    image_base64 = await get_camera_image(settings.camera_entity)
-    logger.info(f"Successfully retrieved camera image (length: {len(image_base64)} characters)")
-    
-    logger.info("Starting AI analysis in a background thread...")
-    messes = await run_in_threadpool(state.ai_service.analyze_room_for_mess, image_base64)
-    logger.info(f"Analysis complete. Found {len(messes)} items: {messes}")
-    
-    # The original implementation stored tasks in the app_state.
-    # This functionality would need to be added back to the new State class if needed.
-    
-    # Calculate a simple cleanliness score based on number of messes
-    total_possible_score = 100
-    mess_penalty = min(len(messes) * 10, 80)  # Max 80 point penalty
-    cleanliness_score = max(total_possible_score - mess_penalty, 20)  # Min score of 20
-    
-    return {
-        "tasks": messes,
-        "cleanliness_score": cleanliness_score
-    }
+        logger.info("Attempting to get camera image...")
+        image_base64 = await get_camera_image(settings.camera_entity)
+        if not image_base64 or len(image_base64) < 100:
+            raise CameraError("Received empty or invalid image data from camera.")
+        logger.info(f"Successfully retrieved camera image (length: {len(image_base64)} characters)")
+        
+        logger.info("Starting AI analysis in a background thread...")
+        messes = await run_in_threadpool(state.ai_service.analyze_room_for_mess, image_base64)
+        logger.info(f"Analysis complete. Found {len(messes)} items: {messes}")
+        
+        total_possible_score = 100
+        mess_penalty = min(len(messes) * 10, 80)
+        cleanliness_score = max(total_possible_score - mess_penalty, 20)
+
+        analysis_result = {
+            "id": datetime.datetime.now().isoformat(),
+            "date": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "tasks": messes,
+            "cleanliness_score": cleanliness_score
+        }
+
+        state.add_analysis_to_history(analysis_result)
+        
+        return analysis_result
+    except AppException as e:
+        logger.error(f"An application error occurred during analysis: {e.detail}")
+        raise e  # Re-raise to be handled by the global handler
+    except Exception as e:
+        logger.exception("An unexpected error occurred during room analysis.")
+        raise HTTPException(status_code=500, detail="An unexpected error occurred during analysis.")

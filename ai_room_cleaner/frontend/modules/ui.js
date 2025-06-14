@@ -52,24 +52,40 @@ export const hideLoading = () => {
     loadingOverlay.classList.add('hidden');
 };
 
-export const showError = (error) => {
+export const showError = (error, retryCallback = null) => {
     let errorMessage = 'An unexpected error occurred.';
-    if (typeof error === 'string') {
+
+    if (!navigator.onLine) {
+        errorMessage = "You are offline. Please check your internet connection.";
+    } else if (typeof error === 'string') {
         errorMessage = error;
     } else if (error instanceof Error) {
         errorMessage = error.message;
         if (error.response && error.response.data && error.response.data.detail) {
-            errorMessage += ` ${error.response.data.detail}`;
-        }
-        if (error.stack) {
-            console.error(error.stack);
+            errorMessage = error.response.data.detail;
         }
     }
-    errorToast.textContent = errorMessage;
+    
+    errorToast.innerHTML = `<span>${errorMessage}</span>`;
+
+    if (retryCallback) {
+        const retryButton = document.createElement('button');
+        retryButton.textContent = 'Retry';
+        retryButton.onclick = () => {
+            clearError();
+            retryCallback();
+        };
+        errorToast.appendChild(retryButton);
+    }
+
     errorToast.classList.remove('hidden');
-    setTimeout(() => {
-        errorToast.classList.add('hidden');
-    }, 5000); // Increased timeout for better readability
+
+    // Do not auto-hide if there's a retry button
+    if (!retryCallback) {
+        setTimeout(() => {
+            errorToast.classList.add('hidden');
+        }, 5000);
+    }
 };
 
 export const clearError = () => {

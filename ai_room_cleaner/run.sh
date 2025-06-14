@@ -49,6 +49,12 @@ echo "API Key configured: $([ -n "$API_KEY" ] && echo "Yes" || echo "No")"
 # Change to the correct directory
 cd /app
 
-# Start the FastAPI application
-echo "Starting FastAPI server..."
-exec python3 -m uvicorn backend.main:app --host 0.0.0.0 --port 8000 --log-level info
+if [ "$1" == "test" ]; then
+    echo "Running tests..."
+    pip install -r requirements-dev.txt
+    pytest
+else
+    # Start the FastAPI application
+    echo "Starting FastAPI server..."
+    exec python3 -m uvicorn backend.main:app --host 0.0.0.0 --port 8000 --log-level info
+fi

@@ -38,3 +38,12 @@ export const analyzeRoom = async () => {
         throw error;
     }
 };
+
+export const getHistory = async () => {
+    try {
+        return await apiService('/history');
+    } catch (error) {
+        console.error('Error fetching history:', error);
+        throw error;
+    }
+};
