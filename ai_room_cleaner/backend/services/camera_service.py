@@ -1,10 +1,12 @@
 import base64
 import httpx
 from loguru import logger
-from backend.core.config import settings
+
+from backend.core.config import Settings
 from backend.core.exceptions import CameraError, ConfigError
 
-async def get_camera_image(camera_entity_id: str) -> str:
+
+async def get_camera_image(camera_entity_id: str, settings: Settings) -> str:
     """
     Fetches the image from the specified Home Assistant camera entity.
     Raises:

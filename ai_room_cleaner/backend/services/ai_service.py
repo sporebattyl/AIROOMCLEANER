@@ -37,7 +37,6 @@ MAX_IMAGE_SIZE_MB = 1  # Max image file size in megabytes.
 MAX_IMAGE_DIMENSION = 2048  # Max width or height for an image.
 
 # Global flag to ensure the Gemini client is configured only once.
-_gemini_configured = False
 
 
 class AIService:

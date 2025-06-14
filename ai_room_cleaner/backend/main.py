@@ -1,12 +1,12 @@
 import os
+from contextlib import asynccontextmanager
 from loguru import logger
 import sys
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
-from slowapi import Limiter, _rate_limit_exceeded_handler
-from slowapi.util import get_remote_address
+from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from backend.core.config import get_settings
 from backend.api.router import router as api_router, limiter as api_limiter
@@ -18,6 +18,45 @@ from backend.services.ai_service import AIService
 logger.remove()
 logger.add(sys.stderr, format="{time} {level} {message}", serialize=True, level="INFO")
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Manage application startup and shutdown events."""
+    logger.info("--- AI Room Cleaner Starting Up ---")
+    
+    # Initialize services and state
+    try:
+        settings = get_settings()
+        ai_service = AIService()
+        app.state.state = State(ai_service=ai_service, settings=settings)
+        app.state.limiter = api_limiter
+        logger.info("AI service and application state initialized.")
+        
+        logger.info(f"Camera Entity: {settings.camera_entity or 'Not set'}")
+        logger.info(f"AI Model: {settings.ai_model or 'Not set'}")
+        logger.info(f"API Key configured: {bool(settings.api_key)}")
+        logger.info(f"Supervisor URL: {settings.supervisor_url}")
+        
+        # Check for frontend files
+        logger.info("Checking for frontend files...")
+        frontend_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "frontend"))
+        if os.path.exists(frontend_dir):
+            for filename in ["index.html", "style.css", "app.js"]:
+                filepath = os.path.join(frontend_dir, filename)
+                exists = os.path.exists(filepath)
+                logger.info(f"  {filename}: {'✓' if exists else '✗'}")
+        else:
+            logger.error(f"Frontend directory not found at: {frontend_dir}")
+        
+        logger.info("Essential configuration is valid.")
+    except Exception as e:
+        logger.error(f"Failed to initialize application state: {e}", exc_info=True)
+        # Depending on the desired behavior, you might want to exit the application
+        # if the state cannot be initialized. For now, we just log the error.
+    
+    logger.info("--- Startup Complete ---")
+    yield
+    logger.info("--- AI Room Cleaner Shutting Down ---")
+
 app = FastAPI(
     title="AI Room Cleaner",
     version="0.1.0",
@@ -25,7 +64,8 @@ app = FastAPI(
 A smart home automation project that uses AI to identify messes in a room
 and suggest cleaning tasks. It's designed to be integrated with Home Assistant
 but can be run as a standalone service.
-"""
+""",
+    lifespan=lifespan
 )
 
 # Exception Handlers
@@ -54,14 +94,9 @@ async def generic_exception_handler(request: Request, exc: Exception):
         content={"error": "InternalServerError", "message": "An unexpected internal error occurred."},
     )
 
-# Set up rate limiter
-limiter = Limiter(key_func=get_remote_address, default_limits=["100/hour"])
-app.state.limiter = api_limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # Add CORS middleware
-# In a production environment, this should be a specific list of trusted domains.
-# For development, we allow localhost and 127.0.0.1.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=get_settings().cors_allowed_origins,
@@ -88,41 +123,6 @@ async def log_requests(request: Request, call_next):
     response = await call_next(request)
     logger.info(f"Response: {response.status_code}")
     return response
-
-@app.on_event("startup")
-async def startup_event():
-    """Log startup information and initialize application state."""
-    logger.info("--- AI Room Cleaner Starting Up ---")
-    
-    # Initialize services and state
-    try:
-        settings = get_settings()
-        ai_service = AIService()
-        app.state.state = State(ai_service=ai_service)
-        logger.info("AI service and application state initialized.")
-    except Exception as e:
-        logger.error(f"Failed to initialize application state: {e}", exc_info=True)
-        # Depending on the desired behavior, you might want to exit the application
-        # if the state cannot be initialized. For now, we just log the error.
-        
-    settings = get_settings()
-    logger.info(f"Camera Entity: {settings.camera_entity or 'Not set'}")
-    logger.info(f"AI Model: {settings.ai_model or 'Not set'}")
-    logger.info(f"API Key configured: {bool(settings.api_key)}")
-    logger.info(f"Supervisor URL: {settings.supervisor_url}")
-    
-    # Check for frontend files
-    logger.info("Checking for frontend files...")
-    if os.path.exists(frontend_dir):
-        for filename in ["index.html", "style.css", "app.js"]:
-            filepath = os.path.join(frontend_dir, filename)
-            exists = os.path.exists(filepath)
-            logger.info(f"  {filename}: {'✓' if exists else '✗'}")
-    else:
-        logger.error(f"Frontend directory does not exist: {frontend_dir}")
-    
-    logger.info("Essential configuration is valid.")
-    logger.info("--- Startup Complete ---")
 
 if __name__ == "__main__":
     import uvicorn

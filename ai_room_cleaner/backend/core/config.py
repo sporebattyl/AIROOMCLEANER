@@ -65,6 +65,11 @@ class Settings(BaseSettings):
         alias="CORS_ALLOWED_ORIGINS",
         description="A list of origins that are allowed to make cross-origin requests."
     )
+    history_file_path: str = Field(
+        default="data/analysis_history.json",
+        alias="HISTORY_FILE_PATH",
+        description="The file path to store analysis history."
+    )
 
     @model_validator(mode='before')
     @classmethod

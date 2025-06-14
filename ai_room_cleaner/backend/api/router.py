@@ -44,13 +44,13 @@ async def analyze_room(request: Request):
     logger.info("=== Starting room analysis ===")
     try:
         state: State = request.app.state.state
-
         settings = get_settings()
+
         if not settings.camera_entity:
-            raise ConfigError(detail="Camera entity ID is not configured.")
+            raise ConfigError("Camera entity ID is not configured.")
 
         logger.info("Attempting to get camera image...")
-        image_base64 = await get_camera_image(settings.camera_entity)
+        image_base64 = await get_camera_image(settings.camera_entity, settings)
         if not image_base64 or len(image_base64) < 100:
             raise CameraError("Received empty or invalid image data from camera.")
         logger.info(f"Successfully retrieved camera image (length: {len(image_base64)} characters)")
@@ -73,6 +73,15 @@ async def analyze_room(request: Request):
         state.add_analysis_to_history(analysis_result)
         
         return analysis_result
+    except ConfigError as e:
+        logger.error(f"Configuration error during analysis: {e.detail}")
+        raise HTTPException(status_code=400, detail=e.detail)
+    except CameraError as e:
+        logger.error(f"Camera error during analysis: {e.detail}")
+        raise HTTPException(status_code=502, detail=e.detail) # 502 Bad Gateway
+    except AIError as e:
+        logger.error(f"AI service error during analysis: {e.detail}")
+        raise HTTPException(status_code=503, detail=e.detail) # 503 Service Unavailable
     except AppException as e:
         logger.error(f"An application error occurred during analysis: {e.detail}")
         raise e  # Re-raise to be handled by the global handler
