@@ -94,9 +94,72 @@ export const ERROR_MESSAGES = {
     HISTORY_LOAD_FAILED: 'Could not load analysis history.',
 };
 
-export const state = {
+// Encapsulated application state
+const appState = {
     history: [],
-    currentTheme: 'light',
+    currentTheme: 'light', // Default theme
 };
+
+// --- Getters ---
+
+/**
+ * Gets a copy of the analysis history.
+ * @returns {Array} A copy of the history array.
+ */
+export function getHistory() {
+    return [...appState.history];
+}
+
+/**
+ * Gets the current UI theme.
+ * @returns {string} The current theme ('light' or 'dark').
+ */
+export function getCurrentTheme() {
+    return appState.currentTheme;
+}
+
+
+// --- Setters ---
+
+/**
+ * Replaces the entire history with a new array.
+ * @param {Array} newHistory - The new history array.
+ */
+export function setHistory(newHistory) {
+    if (Array.isArray(newHistory)) {
+        appState.history = [...newHistory];
+    } else {
+        console.error("Validation Error: setHistory expects an array.");
+    }
+}
+
+/**
+ * Adds a new item to the beginning of the history.
+ * If the history exceeds MAX_HISTORY_ITEMS, the oldest item is removed.
+ * @param {object} item - The history item to add.
+ */
+export function addToHistory(item) {
+    if (typeof item === 'object' && item !== null) {
+        appState.history.unshift(item);
+        if (appState.history.length > CONFIG.MAX_HISTORY_ITEMS) {
+            appState.history.pop();
+        }
+    } else {
+         console.error("Validation Error: addToHistory expects an object.");
+    }
+}
+
+
+/**
+ * Sets the current UI theme.
+ * @param {string} newTheme - The new theme name (e.g., 'light', 'dark').
+ */
+export function setCurrentTheme(newTheme) {
+    if (typeof newTheme === 'string') {
+        appState.currentTheme = newTheme;
+    } else {
+        console.error("Validation Error: setCurrentTheme expects a string.");
+    }
+}
 
 export const elements = {};

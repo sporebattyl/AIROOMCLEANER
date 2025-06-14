@@ -1,12 +1,25 @@
 // Global handler for unhandled promise rejections
-window.addEventListener('unhandledrejection', event => {
+const handleUnhandledRejection = (event) => {
     console.error('Unhandled promise rejection:', event.reason);
     // Optionally, you could show a user-facing error message here
-});
+};
+
+window.addEventListener('unhandledrejection', handleUnhandledRejection);
 
 import { initializeUIElements } from './modules/ui.js';
-import { state, elements, storage } from './modules/state.js';
-import { setupEventListeners, loadHistory, handleAnalyzeRoom } from './modules/eventHandlers.js';
+import {
+    setCurrentTheme,
+    elements,
+    storage
+} from './modules/state.js';
+import {
+    setupEventListeners,
+    loadHistory,
+    debouncedHandleAnalyzeRoom,
+    handleToggleTheme,
+    handleClearHistory,
+    handleToggleTask
+} from './modules/eventHandlers.js';
 
 const setupUI = async () => {
     initializeUIElements();
@@ -19,8 +32,9 @@ const setupUI = async () => {
     elements.clearHistoryBtn.disabled = true;
     elements.clearHistoryBtn.title = "This feature is not available yet.";
 
-    state.currentTheme = storage.get('theme', 'light');
-    document.documentElement.setAttribute('data-theme', state.currentTheme);
+    const savedTheme = storage.get('theme', 'light');
+    setCurrentTheme(savedTheme);
+    document.documentElement.setAttribute('data-theme', savedTheme);
 
     await loadHistory();
 };
@@ -33,10 +47,23 @@ const initializeApp = async () => {
 document.addEventListener('DOMContentLoaded', initializeApp);
 
 export const cleanup = () => {
+    // Remove all event listeners to prevent memory leaks
+    window.removeEventListener('unhandledrejection', handleUnhandledRejection);
+    document.removeEventListener('DOMContentLoaded', initializeApp);
+    window.removeEventListener('beforeunload', cleanup);
+
     if (elements.analyzeBtn) {
-        elements.analyzeBtn.removeEventListener('click', handleAnalyzeRoom);
+        elements.analyzeBtn.removeEventListener('click', debouncedHandleAnalyzeRoom);
     }
-    // ... remove other listeners
+    if (elements.themeToggleBtn) {
+        elements.themeToggleBtn.removeEventListener('click', handleToggleTheme);
+    }
+    if (elements.clearHistoryBtn) {
+        elements.clearHistoryBtn.removeEventListener('click', handleClearHistory);
+    }
+    if (elements.messesList) {
+        elements.messesList.removeEventListener('click', handleToggleTask);
+    }
 };
 
 // Call cleanup when page unloads

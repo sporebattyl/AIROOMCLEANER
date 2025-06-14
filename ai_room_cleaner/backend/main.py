@@ -14,7 +14,6 @@ from backend.core.exceptions import AppException
 from backend.core.state import State
 from backend.services.ai_service import AIService
 
-import sys
 import time
 from loguru import logger
 from fastapi import Request, Response

@@ -1,7 +1,7 @@
 const getApiBaseUrl = () => {
     // In a real app, this might come from a config file or env variable
     // For this project, we'll assume the API is at the same origin under /api
-    return `${window.location.origin}/api`;
+    return `${window.location.origin}/api/`;
 };
 
 const getApiUrl = (endpoint) => {
@@ -61,7 +61,7 @@ const apiService = async (endpoint, options = {}) => {
 
 export const analyzeRoom = async () => {
     try {
-        return await apiService('/api/v1/analyze-room-secure', { method: 'POST' });
+        return await apiService('v1/analyze-room-secure', { method: 'POST' });
     } catch (error) {
         console.error('Error analyzing room:', error);
         throw error;
@@ -70,7 +70,7 @@ export const analyzeRoom = async () => {
 
 export const getHistory = async () => {
     try {
-        return await apiService('/history');
+        return await apiService('history');
     } catch (error) {
         console.error('Error fetching history:', error);
         throw error;

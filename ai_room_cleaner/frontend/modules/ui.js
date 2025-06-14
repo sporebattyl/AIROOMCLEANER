@@ -14,6 +14,12 @@ export const initializeUIElements = () => {
     };
 };
 
+const clearElement = (element) => {
+    while (element.firstChild) {
+        element.removeChild(element.firstChild);
+    }
+};
+
 const createMessItem = (task) => {
     const li = document.createElement('li');
     li.textContent = task.mess;
@@ -44,7 +50,7 @@ export const updateMessesList = (tasks) => {
     });
 
     // Batch DOM writes
-    uiElements.messesList.innerHTML = '';
+    clearElement(uiElements.messesList);
     uiElements.messesList.appendChild(fragment);
     uiElements.tasksCount.textContent = tasks.length;
     
@@ -55,7 +61,7 @@ export const updateMessesList = (tasks) => {
 };
 
 export const showEmptyState = () => {
-    uiElements.messesList.innerHTML = '';
+    clearElement(uiElements.messesList);
     uiElements.tasksCount.textContent = 0;
 
     // Batch class changes
@@ -65,13 +71,18 @@ export const showEmptyState = () => {
 };
 
 export const updateCleanlinessScore = (score) => {
-    uiElements.cleanlinessScore.textContent = `${score}%`;
+    const scoreEl = uiElements.cleanlinessScore;
+    scoreEl.textContent = `${score}%`;
+
+    // Batch class changes for performance
+    scoreEl.classList.remove('score-high', 'score-medium', 'score-low');
+
     if (score >= 80) {
-        uiElements.cleanlinessScore.style.color = 'var(--success-color)';
+        scoreEl.classList.add('score-high');
     } else if (score >= 50) {
-        uiElements.cleanlinessScore.style.color = 'var(--secondary-color)';
+        scoreEl.classList.add('score-medium');
     } else {
-        uiElements.cleanlinessScore.style.color = 'var(--error-color)';
+        scoreEl.classList.add('score-low');
     }
 };
 
@@ -112,7 +123,7 @@ export const showError = (error, retryCallback = null) => {
         fragment.appendChild(retryButton);
     }
 
-    uiElements.errorToast.innerHTML = ''; // Clear previous errors
+    clearElement(uiElements.errorToast); // Clear previous errors
     uiElements.errorToast.appendChild(fragment);
     uiElements.errorToast.classList.remove('hidden');
 
@@ -146,7 +157,10 @@ const createHistoryItem = (item) => {
 };
 
 export const showHistoryLoading = () => {
-    uiElements.historyList.innerHTML = '<li>Loading history...</li>';
+    clearElement(uiElements.historyList);
+    const loadingItem = document.createElement('li');
+    loadingItem.textContent = 'Loading history...';
+    uiElements.historyList.appendChild(loadingItem);
     
     // Batch class changes
     uiElements.historyEmptyState.classList.add('hidden');
@@ -154,7 +168,7 @@ export const showHistoryLoading = () => {
 };
 
 export const hideHistoryLoading = () => {
-    uiElements.historyList.innerHTML = '';
+    clearElement(uiElements.historyList);
 };
 
 
@@ -169,7 +183,7 @@ export const updateHistoryList = (history) => {
         history.forEach(item => {
             fragment.appendChild(createHistoryItem(item));
         });
-        uiElements.historyList.innerHTML = '';
+        clearElement(uiElements.historyList);
         uiElements.historyList.appendChild(fragment);
         uiElements.historyEmptyState.classList.add('hidden');
         uiElements.historyList.classList.remove('hidden');
@@ -177,7 +191,7 @@ export const updateHistoryList = (history) => {
 };
 
 export const clearHistory = () => {
-    uiElements.historyList.innerHTML = '';
+    clearElement(uiElements.historyList);
     
     // Batch class changes
     uiElements.historyEmptyState.classList.remove('hidden');

@@ -11,14 +11,21 @@ import {
     showHistoryLoading,
     hideHistoryLoading,
 } from './ui.js';
-import { state, elements, storage } from './state.js';
+import {
+    getHistory,
+    setHistory,
+    getCurrentTheme,
+    setCurrentTheme,
+    elements,
+    storage
+} from './state.js';
 
 export const loadHistory = async () => {
     showHistoryLoading();
     try {
-        const history = await getHistory();
-        state.history = history;
-        updateHistoryList(state.history);
+        const historyData = await getHistory();
+        setHistory(historyData);
+        updateHistoryList(getHistory());
     } catch (error) {
         hideHistoryLoading();
         if (error instanceof ServerError) {
@@ -66,9 +73,10 @@ export const handleClearHistory = () => {
 };
 
 export const handleToggleTheme = () => {
-    state.currentTheme = state.currentTheme === 'dark' ? 'light' : 'dark';
-    document.documentElement.setAttribute('data-theme', state.currentTheme);
-    storage.set('theme', state.currentTheme);
+    const newTheme = getCurrentTheme() === 'dark' ? 'light' : 'dark';
+    setCurrentTheme(newTheme);
+    document.documentElement.setAttribute('data-theme', newTheme);
+    storage.set('theme', newTheme);
 };
 
 export const handleToggleTask = (e) => {
@@ -87,8 +95,11 @@ const debounce = (func, delay) => {
     };
 };
 
+// Debounced version of handleAnalyzeRoom to be used for event listeners
+export const debouncedHandleAnalyzeRoom = debounce(handleAnalyzeRoom, 500);
+
 export const setupEventListeners = () => {
-    elements.analyzeBtn.addEventListener('click', debounce(handleAnalyzeRoom, 500));
+    elements.analyzeBtn.addEventListener('click', debouncedHandleAnalyzeRoom);
     elements.themeToggleBtn.addEventListener('click', handleToggleTheme);
     elements.clearHistoryBtn.addEventListener('click', handleClearHistory);
     elements.messesList.addEventListener('click', handleToggleTask);

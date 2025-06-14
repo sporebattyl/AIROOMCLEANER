@@ -6,6 +6,7 @@ from fastapi.responses import JSONResponse
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 
+from backend.api.constants import ANALYZE_ROUTE
 from backend.core.config import settings
 from backend.core.state import State
 from backend.core.exceptions import AppException, AIError, CameraError, ConfigError
@@ -41,7 +42,7 @@ async def health_check(request: Request):
     return health_data
 
 
-@router.post("/api/v1/analyze-room-secure")
+@router.post(ANALYZE_ROUTE)
 @limiter.limit("10/minute")
 async def analyze_room_secure(request: Request, image: UploadFile = File(...)):
     """

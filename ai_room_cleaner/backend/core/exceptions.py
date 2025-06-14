@@ -10,15 +10,37 @@ class AIError(AppException):
     def __init__(self, detail: str = "AI service error."):
         super().__init__(status_code=500, detail=detail)
 
+
+class AIProviderError(AIError):
+    """Raised for errors originating from the AI provider."""
+    def __init__(self, detail: str = "AI provider error."):
+        super().__init__(detail=detail)
+
+
+class InvalidAPIKeyError(AIProviderError):
+    """Raised when the API key is invalid or unauthorized."""
+    def __init__(self, detail: str = "Invalid or unauthorized API key."):
+        super().__init__(detail=detail)
+
+
+class APIResponseError(AIProviderError):
+    """Raised for unexpected or invalid API responses."""
+    def __init__(self, detail: str = "Invalid API response from AI provider."):
+        super().__init__(detail=detail)
+
+
 class CameraError(AppException):
     """Custom exception for camera service errors."""
     def __init__(self, detail: str = "Camera service error."):
         super().__init__(status_code=500, detail=detail)
 
+
 class ConfigError(AppException):
     """Custom exception for configuration errors."""
     def __init__(self, detail: str = "Configuration error."):
         super().__init__(status_code=500, detail=detail)
+
+
 class ImageProcessingError(AppException):
     """Custom exception for image processing errors."""
     def __init__(self, detail: str = "Image processing error."):

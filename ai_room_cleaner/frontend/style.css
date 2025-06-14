@@ -150,6 +150,17 @@ main {
     color: var(--primary-color);
 }
 
+.score-high {
+    color: var(--success-color);
+}
+
+.score-medium {
+    color: var(--secondary-color);
+}
+
+.score-low {
+    color: var(--error-color);
+}
 .loading-overlay {
     position: fixed;
     top: 0;

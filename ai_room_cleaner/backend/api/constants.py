@@ -1,0 +1,1 @@
+ANALYZE_ROUTE = "/api/v1/analyze-room-secure"
