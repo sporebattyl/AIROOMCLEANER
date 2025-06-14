@@ -3,10 +3,10 @@ window.addEventListener('unhandledrejection', event => {
     console.error('Unhandled promise rejection:', event.reason);
     // Optionally, you could show a user-facing error message here
 });
-import { analyzeRoom, getHistory } from './modules/api.js';
-import { 
-    updateMessesList, 
-    updateCleanlinessScore, 
+import { analyzeRoom, getHistory, NetworkError, ServerError } from './modules/api.js';
+import {
+    updateMessesList,
+    updateCleanlinessScore,
     showLoading, 
     hideLoading, 
     showError,
@@ -15,38 +15,83 @@ import {
     updateHistoryList,
     clearHistory,
     showResults,
-    showEmptyState
+    showEmptyState,
+    showHistoryLoading,
+    hideHistoryLoading
 } from './modules/ui.js';
 
-const storage = {
-    get: (key, defaultValue = null) => {
-        try {
-            const value = localStorage.getItem(key);
-            return value ? JSON.parse(value) : defaultValue;
-        } catch (error) {
-            console.warn(`Could not read '${key}' from localStorage:`, error);
-            return defaultValue;
-        }
-    },
-    set: (key, value) => {
-        try {
-            localStorage.setItem(key, JSON.stringify(value));
-            return true;
-        } catch (error) {
-            console.warn(`Could not write '${key}' to localStorage:`, error);
-            return false;
-        }
-    },
-    remove: (key) => {
-        try {
-            localStorage.removeItem(key);
-            return true;
-        } catch (error) {
-            console.warn(`Could not remove '${key}' from localStorage:`, error);
-            return false;
-        }
+function isStorageAvailable(type) {
+    let storage;
+    try {
+        storage = window[type];
+        const x = '__storage_test__';
+        storage.setItem(x, x);
+        storage.removeItem(x);
+        return true;
+    } catch (e) {
+        return e instanceof DOMException && (
+            // everything except Firefox
+            e.code === 22 ||
+            // Firefox
+            e.code === 1014 ||
+            // test name field too, because code might not be present
+            // everything except Firefox
+            e.name === 'QuotaExceededError' ||
+            // Firefox
+            e.name === 'NS_ERROR_DOM_QUOTA_REACHED') &&
+            // acknowledge QuotaExceededError only if there's something already stored
+            (storage && storage.length !== 0);
     }
-};
+}
+
+let storage;
+if (isStorageAvailable('localStorage')) {
+    storage = {
+        get: (key, defaultValue = null) => {
+            try {
+                const value = localStorage.getItem(key);
+                return value ? JSON.parse(value) : defaultValue;
+            } catch (error) {
+                console.warn(`Could not read '${key}' from localStorage:`, error);
+                return defaultValue;
+            }
+        },
+        set: (key, value) => {
+            try {
+                localStorage.setItem(key, JSON.stringify(value));
+                return true;
+            } catch (error) {
+                console.warn(`Could not write '${key}' to localStorage:`, error);
+                return false;
+            }
+        },
+        remove: (key) => {
+            try {
+                localStorage.removeItem(key);
+                return true;
+            } catch (error) {
+                console.warn(`Could not remove '${key}' from localStorage:`, error);
+                return false;
+            }
+        }
+    };
+} else {
+    console.warn("localStorage is not available. Falling back to in-memory storage.");
+    const inMemoryStore = {};
+    storage = {
+        get: (key, defaultValue = null) => inMemoryStore.hasOwnProperty(key) ? inMemoryStore[key] : defaultValue,
+        set: (key, value) => {
+            inMemoryStore[key] = value;
+            return true;
+        },
+        remove: (key) => {
+            if (inMemoryStore.hasOwnProperty(key)) {
+                delete inMemoryStore[key];
+            }
+            return true;
+        }
+    };
+}
 
 const state = {
     history: [],
@@ -73,12 +118,20 @@ const setupUI = async () => {
 };
 
 const loadHistory = async () => {
+    showHistoryLoading();
     try {
         const history = await getHistory();
         state.history = history;
         updateHistoryList(state.history);
     } catch (error) {
-        showError("Could not load analysis history.");
+        hideHistoryLoading();
+        if (error instanceof ServerError) {
+            showError(`Server error: ${error.message}`);
+        } else if (error instanceof NetworkError) {
+            showError(`Network error: ${error.message}`);
+        } else {
+            showError("An unexpected error occurred while loading history.");
+        }
     }
 };
 
@@ -109,7 +162,13 @@ const handleAnalyzeRoom = async () => {
     } catch (error) {
         console.error('Analysis error:', error);
         hideLoading();
-        showError(error, handleAnalyzeRoom);
+        if (error instanceof ServerError) {
+            showError(`Server error: ${error.message}`, handleAnalyzeRoom);
+        } else if (error instanceof NetworkError) {
+            showError(`Network error: ${error.message}`, handleAnalyzeRoom);
+        } else {
+            showError('An unexpected error occurred during analysis.', handleAnalyzeRoom);
+        }
     }
 };
 
@@ -131,8 +190,18 @@ const handleToggleTask = (e) => {
     }
 };
 
+const debounce = (func, delay) => {
+    let timeoutId;
+    return (...args) => {
+        clearTimeout(timeoutId);
+        timeoutId = setTimeout(() => {
+            func.apply(this, args);
+        }, delay);
+    };
+};
+
 const setupEventListeners = () => {
-    elements.analyzeBtn.addEventListener('click', handleAnalyzeRoom);
+    elements.analyzeBtn.addEventListener('click', debounce(handleAnalyzeRoom, 500));
     elements.themeToggleBtn.addEventListener('click', handleToggleTheme);
     elements.clearHistoryBtn.addEventListener('click', handleClearHistory);
     elements.messesList.addEventListener('click', handleToggleTask);

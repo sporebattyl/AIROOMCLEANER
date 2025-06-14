@@ -14,7 +14,7 @@
                 <h1>AI Room Cleaner</h1>
             </div>
             <nav>
-                <button id="theme-toggle-btn">Toggle Theme</button>
+                <button id="theme-toggle-btn" role="button" aria-label="Toggle color theme">Toggle Theme</button>
             </nav>
         </header>
 
@@ -23,7 +23,7 @@
                 <div class="card">
                     <h2>Room Analysis</h2>
                     <p>Click the button below to analyze your room for messes.</p>
-                    <button id="analyze-btn" class="btn btn-primary">Analyze Room</button>
+                    <button id="analyze-btn" class="btn btn-primary" aria-label="Analyze room for messes">Analyze Room</button>
                 </div>
 
                 <div id="results-container" class="results-card card hidden">
@@ -34,7 +34,7 @@
                     </div>
                     <div id="messes-list-container">
                         <h3>Identified Messes</h3>
-                        <ul id="messes-list"></ul>
+                        <ul id="messes-list" role="list" aria-live="polite"></ul>
                     </div>
                      <div id="empty-state" class="empty-state hidden">
                         <h3>No Messes Found!</h3>
@@ -47,14 +47,14 @@
                 <div class="card">
                     <h2>Task History</h2>
                     <div id="history-list-container">
-                        <ul id="history-list">
+                        <ul id="history-list" role="list" aria-live="polite">
                             <!-- History items will be injected here -->
                         </ul>
                          <div id="history-empty-state" class="empty-state">
                             <p>No analysis history yet. Analyze a room to get started!</p>
                         </div>
                     </div>
-                    <button id="clear-history-btn" class="btn btn-secondary">Clear History</button>
+                    <button id="clear-history-btn" class="btn btn-secondary" aria-label="Clear analysis history">Clear History</button>
                 </div>
             </aside>
         </main>

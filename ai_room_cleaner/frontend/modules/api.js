@@ -6,6 +6,21 @@ const getApiUrl = (endpoint) => {
     return url.href;
 };
 
+export class NetworkError extends Error {
+    constructor(message) {
+        super(message);
+        this.name = 'NetworkError';
+    }
+}
+
+export class ServerError extends Error {
+    constructor(message, status) {
+        super(message);
+        this.name = 'ServerError';
+        this.status = status;
+    }
+}
+
 const apiService = async (endpoint, options = {}) => {
     const url = getApiUrl(endpoint);
 
@@ -19,14 +34,23 @@ const apiService = async (endpoint, options = {}) => {
         });
 
         if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`HTTP error! status: ${response.status} - ${errorText}`);
+            let errorMessage = `HTTP error! status: ${response.status}`;
+            try {
+                const errorData = await response.json();
+                errorMessage = errorData.detail || errorMessage;
+            } catch (e) {
+                // Ignore if response is not json
+            }
+            throw new ServerError(errorMessage, response.status);
         }
 
         return response.json();
     } catch (error) {
+        if (error instanceof ServerError) {
+            throw error;
+        }
         console.error(`API call to ${url} failed:`, error);
-        throw error;
+        throw new NetworkError('Failed to connect to the server. Please check your network connection.');
     }
 };
 

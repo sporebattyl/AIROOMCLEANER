@@ -8,18 +8,27 @@ const historyEmptyState = document.getElementById('history-empty-state');
 const resultsContainer = document.getElementById('results-container');
 const emptyState = document.getElementById('empty-state');
 
-const createMessItem = (task) => `
-    <li title="Reason: ${task.reason || 'N/A'}. Click to mark as complete.">
-        ${task.mess}
-    </li>
-`;
+const createMessItem = (task) => {
+    const li = document.createElement('li');
+    li.textContent = task.mess;
+    li.title = `Reason: ${task.reason || 'N/A'}. Click to mark as complete.`;
+    li.setAttribute('role', 'listitem');
+    return li;
+};
 
 export const updateMessesList = (tasks) => {
     if (tasks.length === 0) {
         showEmptyState();
         return;
     }
-    messesList.innerHTML = tasks.map(createMessItem).join('');
+    
+    messesList.innerHTML = '';
+    const fragment = document.createDocumentFragment();
+    tasks.forEach(task => {
+        fragment.appendChild(createMessItem(task));
+    });
+    messesList.appendChild(fragment);
+
     tasksCountEl.textContent = tasks.length;
     emptyState.classList.add('hidden');
     resultsContainer.classList.remove('hidden');
@@ -66,7 +75,10 @@ export const showError = (error, retryCallback = null) => {
         }
     }
     
-    errorToast.innerHTML = `<span>${errorMessage}</span>`;
+    errorToast.innerHTML = ''; // Clear previous errors
+    const errorSpan = document.createElement('span');
+    errorSpan.textContent = errorMessage;
+    errorToast.appendChild(errorSpan);
 
     if (retryCallback) {
         const retryButton = document.createElement('button');
@@ -99,21 +111,47 @@ export const toggleTheme = () => {
     localStorage.setItem('theme', newTheme);
 };
 
-const createHistoryItem = (item) => `
-    <li>
-        <span>${item.date}</span>
-        <span>${item.score}%</span>
-    </li>
-`;
+const createHistoryItem = (item) => {
+    const li = document.createElement('li');
+    li.setAttribute('role', 'listitem');
+
+    const dateSpan = document.createElement('span');
+    dateSpan.textContent = item.date;
+
+    const scoreSpan = document.createElement('span');
+    scoreSpan.textContent = `${item.score}%`;
+
+    li.appendChild(dateSpan);
+    li.appendChild(scoreSpan);
+
+    return li;
+};
+
+export const showHistoryLoading = () => {
+    historyList.innerHTML = '<li>Loading history...</li>';
+    historyEmptyState.classList.add('hidden');
+    historyList.classList.remove('hidden');
+};
+
+export const hideHistoryLoading = () => {
+    historyList.innerHTML = '';
+};
+
 
 export const updateHistoryList = (history) => {
+    hideHistoryLoading();
     if (history.length === 0) {
         historyEmptyState.classList.remove('hidden');
         historyList.classList.add('hidden');
     } else {
         historyEmptyState.classList.add('hidden');
         historyList.classList.remove('hidden');
-        historyList.innerHTML = history.map(createHistoryItem).join('');
+        historyList.innerHTML = '';
+        const fragment = document.createDocumentFragment();
+        history.forEach(item => {
+            fragment.appendChild(createHistoryItem(item));
+        });
+        historyList.appendChild(fragment);
     }
 };
 
