@@ -20,6 +20,7 @@ import {
     storage
 } from './state.js';
 
+// Fetches and displays the analysis history from the server.
 export const loadHistory = async () => {
     showHistoryLoading();
     try {
@@ -38,6 +39,7 @@ export const loadHistory = async () => {
     }
 };
 
+// Handles the room analysis process, including UI updates and error handling.
 export const handleAnalyzeRoom = async () => {
     showLoading();
     clearError();
@@ -72,6 +74,7 @@ export const handleClearHistory = () => {
     console.warn("Clear history is disabled.");
 };
 
+// Toggles the theme between light and dark mode.
 export const handleToggleTheme = () => {
     const newTheme = getCurrentTheme() === 'dark' ? 'light' : 'dark';
     setCurrentTheme(newTheme);
@@ -98,6 +101,7 @@ const debounce = (func, delay) => {
 // Debounced version of handleAnalyzeRoom to be used for event listeners
 export const debouncedHandleAnalyzeRoom = debounce(handleAnalyzeRoom, 500);
 
+// Sets up all the event listeners for the application.
 export const setupEventListeners = () => {
     elements.analyzeBtn.addEventListener('click', debouncedHandleAnalyzeRoom);
     elements.themeToggleBtn.addEventListener('click', handleToggleTheme);

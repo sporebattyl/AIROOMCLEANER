@@ -30,7 +30,9 @@ class AIService:
 
     def __init__(self, settings: Settings):
         self.settings = settings
+        # The AI provider is determined by the settings
         self.ai_provider: AIProvider = get_ai_provider(settings.AI_PROVIDER, settings)
+        # Configure the image processing library
         configure_pyvips(self.settings)
         logger.info(f"AIService initialized with provider: {settings.AI_PROVIDER}")
 
@@ -50,14 +52,18 @@ class AIService:
         """
         logger.info(f"Using AI provider: {self.settings.AI_PROVIDER}, model: {self.settings.AI_MODEL}")
 
+        # Validate the input image data
         if not image_base64 or not isinstance(image_base64, str):
             raise AIError("Invalid or empty image data provided.")
 
         try:
+            # Decode, validate, and process the image
             image_bytes = self._decode_and_validate_image(image_base64)
             resized_image_bytes = self._process_image(image_bytes)
+            # Sanitize the prompt to prevent injection attacks
             sanitized_prompt = self._sanitize_prompt(self.settings.AI_PROMPT)
 
+            # Delegate the analysis to the configured AI provider
             return await self.ai_provider.analyze_image(resized_image_bytes, sanitized_prompt)
 
         except (
