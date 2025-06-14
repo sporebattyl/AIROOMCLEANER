@@ -14,7 +14,7 @@ def test_initialization_gemini():
 
     with patch('backend.services.ai_service.get_settings', return_value=mock_settings):
         with patch('backend.services.ai_service.genai') as mock_genai:
-            service = AIService()
+            service = AIService(mock_settings)
             mock_genai.configure.assert_called_once_with(api_key='test-google-key')
             assert service.gemini_client is not None
             assert service.openai_client is None
@@ -30,7 +30,7 @@ def test_initialization_openai():
 
     with patch('backend.services.ai_service.get_settings', return_value=mock_settings):
         with patch('backend.services.ai_service.openai') as mock_openai:
-            service = AIService()
+            service = AIService(mock_settings)
             mock_openai.OpenAI.assert_called_once_with(api_key='test-openai-key')
             assert service.openai_client is not None
             assert service.gemini_client is None
@@ -44,7 +44,7 @@ def test_initialization_no_key():
     )
     with patch('backend.services.ai_service.get_settings', return_value=mock_settings):
         with pytest.raises(ConfigError, match="Google API key is not configured"):
-            AIService()
+            AIService(mock_settings)
 
 def test_initialization_no_model():
     """Test that a ConfigError is raised if no model is specified."""
@@ -55,7 +55,7 @@ def test_initialization_no_model():
     )
     with patch('backend.services.ai_service.get_settings', return_value=mock_settings):
         with pytest.raises(ConfigError, match="AI model not specified"):
-            AIService()
+            AIService(mock_settings)
 
 def test_unsupported_model():
     """Test that an unsupported model raises an AIError."""
@@ -66,4 +66,4 @@ def test_unsupported_model():
     )
     with patch('backend.services.ai_service.get_settings', return_value=mock_settings):
         with pytest.raises(AIError, match="Unsupported or unrecognized AI model"):
-            AIService()
+            AIService(mock_settings)

@@ -1,0 +1,19 @@
+# Git files
+.git
+.gitignore
+.gitattributes
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Test cache
+.pytest_cache/
+
+# Documentation
+*.md
+
+# Local environment
+.env

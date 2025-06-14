@@ -207,9 +207,9 @@ const setupEventListeners = () => {
     elements.messesList.addEventListener('click', handleToggleTask);
 };
 
-const init = () => {
+const initializeApp = () => {
     setupUI();
     setupEventListeners();
 };
 
-document.addEventListener('DOMContentLoaded', init);
+document.addEventListener('DOMContentLoaded', initializeApp);

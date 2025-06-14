@@ -1,59 +1,52 @@
-# Stage 1: Build stage
-FROM python:3.12-slim-bookworm AS builder
+# Stage 1: Build stage for Python dependencies
+FROM python:3.12-slim-bookworm AS python-builder
 
-# Install bashio and build dependencies
-RUN apt-get update && apt-get install -y \
-    bash \
-    dos2unix \
-    curl \
-    jq \
-    && rm -rf /var/lib/apt/lists/*
-
-# Install bashio
-RUN curl -J -L -o /tmp/bashio.tar.gz \
-    "https://github.com/hassio-addons/bashio/archive/v0.16.2.tar.gz" \
-    && mkdir /tmp/bashio \
-    && tar zxvf /tmp/bashio.tar.gz --strip 1 -C /tmp/bashio \
-    && mv /tmp/bashio/lib /usr/lib/bashio \
-    && ln -s /usr/lib/bashio/bashio /usr/bin/bashio \
-    && rm -rf /tmp/bashio*
-
+# Set the working directory
 WORKDIR /app
 
-# Copy and install Python dependencies
+# Install build dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy only the requirements file to leverage Docker cache
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy application code
-COPY . .
-
-# Fix line endings and permissions
-RUN dos2unix /app/run.sh && chmod +x /app/run.sh
+# Install Python dependencies
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
 
 
-# Stage 2: Production stage
+# Stage 2: Final production stage
 FROM python:3.12-slim-bookworm
 
-# Install runtime dependencies
-# bash is for bashio, curl/jq might be used by bashio scripts
-RUN apt-get update && apt-get install -y \
-    bash \
-    curl \
-    jq \
-    && rm -rf /var/lib/apt/lists/*
+# Set environment variables
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
 
+# Set the working directory
 WORKDIR /app
 
-# Copy installed Python dependencies from builder
-COPY --from=builder /usr/local/lib/python3.12/site-packages/ /usr/local/lib/python3.12/site-packages/
+# Install runtime dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
 
-# Copy bashio from builder
-COPY --from=builder /usr/lib/bashio /usr/lib/bashio
-COPY --from=builder /usr/bin/bashio /usr/bin/bashio
+# Copy installed Python dependencies from the builder stage
+COPY --from=python-builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
 
-# Copy application from builder
-COPY --from=builder /app /app
+# Copy the application code
+COPY . .
 
+# Ensure the run script is executable
+RUN chmod +x /app/run.sh
+
+# Expose the port the app runs on
 EXPOSE 8000
 
+# Add a health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+  CMD curl -f http://localhost:8000/api/health || exit 1
+
+# Define the command to run the application
 CMD ["/app/run.sh"]

@@ -12,7 +12,7 @@ if [ -f /usr/bin/bashio ]; then
     API_KEY=$(bashio::config 'api_key')
     AI_MODEL=$(bashio::config 'ai_model')
     UPDATE_FREQUENCY=$(bashio::config 'update_frequency')
-    PROMPT=$(bashio::config 'prompt')
+    AI_PROMPT=$(bashio::config 'ai_prompt')
     
     echo "Configuration loaded via bashio"
 else
@@ -22,7 +22,7 @@ else
     API_KEY=${API_KEY:-""}
     AI_MODEL=${AI_MODEL:-"gemini-1.5-pro"}
     UPDATE_FREQUENCY=${UPDATE_FREQUENCY:-60}
-    PROMPT=${PROMPT:-"Analyze this room for cleanliness and identify items that need attention."}
+    AI_PROMPT=${AI_PROMPT:-"Analyze this room for cleanliness and identify items that need attention."}
 fi
 
 # Export variables for the Python application
@@ -31,7 +31,7 @@ export GOOGLE_API_KEY="$API_KEY"
 export OPENAI_API_KEY="$API_KEY"  # Support both API types
 export AI_MODEL
 export UPDATE_FREQUENCY
-export PROMPT
+export AI_PROMPT
 
 # Get supervisor token if available (for Home Assistant)
 if [ -n "$SUPERVISOR_TOKEN" ]; then

@@ -26,7 +26,7 @@ async def lifespan(app: FastAPI):
     # Initialize services and state
     try:
         settings = get_settings()
-        ai_service = AIService()
+        ai_service = AIService(settings)
         app.state.state = State(ai_service=ai_service, settings=settings)
         app.state.limiter = api_limiter
         logger.info("AI service and application state initialized.")

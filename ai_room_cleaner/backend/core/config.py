@@ -81,15 +81,13 @@ class Settings(BaseSettings):
         if isinstance(values, dict):
             google_key = values.get("google_api_key")
             openai_key = values.get("openai_api_key")
-    
-            if google_key:
-                values["api_key"] = google_key
-            elif openai_key:
-                values["api_key"] = openai_key
-    
-            if not values.get("api_key"):
+
+            key = google_key or openai_key
+            if not key:
                 raise ValueError("An AI provider API key is required. Please set either GOOGLE_API_KEY or OPENAI_API_KEY.")
-    
+
+            values["api_key"] = key
+
         return values
 
 

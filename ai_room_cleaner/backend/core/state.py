@@ -1,11 +1,14 @@
 import asyncio
 import json
 import os
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from loguru import logger
 
 from backend.services.ai_service import AIService
 from backend.core.config import Settings
+
+
+_state: Optional["State"] = None
 
 
 class State:
@@ -57,3 +60,28 @@ class State:
         except (json.JSONDecodeError, TypeError) as e:
             logger.error(f"Failed to load or parse history from {self.history_file}: {e}", exc_info=True)
             self.history = []
+
+
+def get_state() -> "State":
+    """
+    Returns the singleton instance of the State.
+    This function is the single point of access for the application state.
+    """
+    global _state
+    if _state is None:
+        raise RuntimeError("State has not been initialized. Call initialize_state first.")
+    return _state
+
+
+def initialize_state(ai_service: AIService, settings: Settings) -> "State":
+    """
+    Initializes the application state. This should be called once at startup.
+    """
+    global _state
+    if _state is not None:
+        logger.warning("State is already initialized. Ignoring subsequent call.")
+        return _state
+
+    logger.info("Initializing application state.")
+    _state = State(ai_service, settings)
+    return _state

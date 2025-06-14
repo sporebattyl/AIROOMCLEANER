@@ -40,44 +40,40 @@ MAX_IMAGE_DIMENSION = 2048  # Max width or height for an image.
 
 
 class AIService:
-    def __init__(self):
+    def __init__(self, settings):
+        self.settings = settings
         self.gemini_client = None
         self.openai_client = None
         self._initialize_clients()
 
     def _initialize_clients(self):
-        settings = get_settings()
-        if not settings.ai_model:
+        if not self.settings.ai_model:
             raise ConfigError("AI model not specified in configuration.")
 
-        model_lower = settings.ai_model.lower()
+        model_lower = self.settings.ai_model.lower()
         if "gemini" in model_lower or "google" in model_lower:
             if not genai:
                 raise ConfigError("Google AI libraries not installed. Please run: pip install google-generativeai pillow")
-            api_key = settings.google_api_key
-            if not api_key:
+            if not self.settings.google_api_key:
                 raise ConfigError("Google API key is not configured for the selected Gemini model.")
-            genai.configure(api_key=api_key.get_secret_value())
-            self.gemini_client = genai.GenerativeModel(settings.ai_model)
+            genai.configure(api_key=self.settings.google_api_key.get_secret_value())
+            self.gemini_client = genai.GenerativeModel(self.settings.ai_model)
         elif "gpt" in model_lower or "openai" in model_lower:
             if not openai:
                 raise ConfigError("OpenAI library not installed. Please run: pip install openai")
-            api_key = settings.openai_api_key
-            if not api_key:
+            if not self.settings.openai_api_key:
                 raise ConfigError("OpenAI API key is not configured for the selected GPT model.")
-            self.openai_client = openai.OpenAI(api_key=api_key.get_secret_value())
+            self.openai_client = openai.AsyncOpenAI(api_key=self.settings.openai_api_key.get_secret_value())
         else:
-            raise AIError(f"Unsupported or unrecognized AI model: {settings.ai_model}")
+            raise AIError(f"Unsupported or unrecognized AI model: {self.settings.ai_model}")
 
     async def health_check(self) -> dict:
         """Performs a health check on the configured AI service."""
-        settings = get_settings()
-        model_lower = settings.ai_model.lower()
+        model_lower = self.settings.ai_model.lower()
         if "gemini" in model_lower or "google" in model_lower:
             if not self.gemini_client or not genai:
                 return {"status": "unconfigured", "error": "Gemini client not initialized or library not found."}
             try:
-                # Simple check: list the first model to verify connection and API key.
                 list(genai.list_models())
                 return {"status": "ok", "provider": "google"}
             except Exception as e:
@@ -87,7 +83,7 @@ class AIService:
             if not self.openai_client or not openai:
                 return {"status": "unconfigured", "error": "OpenAI client not initialized or library not found."}
             try:
-                self.openai_client.models.list()
+                await self.openai_client.models.list()
                 return {"status": "ok", "provider": "openai"}
             except Exception as e:
                 logger.error(f"OpenAI health check failed: {e}")
@@ -95,31 +91,30 @@ class AIService:
         else:
             return {"status": "error", "error": "No supported AI model configured for health check."}
 
-    def analyze_room_for_mess(self, image_base64: str) -> List[dict]:
-        settings = get_settings()
-        logger.info(f"Using AI model: {settings.ai_model}")
+    async def analyze_room_for_mess(self, image_base64: str) -> List[dict]:
+        logger.info(f"Using AI model: {self.settings.ai_model}")
         try:
             image_bytes = base64.b64decode(image_base64)
             with Image.open(io.BytesIO(image_bytes)) as img:
                 optimized_img = self._optimize_image(img)
-                sanitized_prompt = self._sanitize_prompt(settings.ai_prompt)
-                model_lower = settings.ai_model.lower()
+                sanitized_prompt = self._sanitize_prompt(self.settings.ai_prompt)
+                model_lower = self.settings.ai_model.lower()
 
                 if "gemini" in model_lower or "google" in model_lower:
-                    return self._analyze_with_gemini(optimized_img, sanitized_prompt)
+                    return await self._analyze_with_gemini(optimized_img, sanitized_prompt)
                 elif "gpt" in model_lower or "openai" in model_lower:
-                    return self._analyze_with_openai(optimized_img, sanitized_prompt)
+                    return await self._analyze_with_openai(optimized_img, sanitized_prompt)
                 else:
-                    raise AIError(f"Unsupported or unrecognized AI model: {settings.ai_model}")
+                    raise AIError(f"Unsupported or unrecognized AI model: {self.settings.ai_model}")
         except Exception as e:
             logger.error(f"Failed to decode or process image: {e}", exc_info=True)
             raise AIError("Invalid image format or processing error.")
 
-    def _analyze_with_gemini(self, image: Image.Image, prompt: str) -> List[dict]:
+    async def _analyze_with_gemini(self, image: Image.Image, prompt: str) -> List[dict]:
         if not self.gemini_client:
             raise ConfigError("Gemini client not initialized.")
         try:
-            response = self.gemini_client.generate_content([prompt, image])
+            response = await self.gemini_client.generate_content_async([prompt, image])
             if not response.parts:
                 if response.prompt_feedback and response.prompt_feedback.block_reason:
                     reason = f"Content blocked by Gemini. Reason: {response.prompt_feedback.block_reason}"
@@ -137,7 +132,7 @@ class AIService:
             logger.error(f"Error with Gemini analysis: {e}", exc_info=True)
             raise AIError("Failed to analyze image with Gemini.") from e
 
-    def _analyze_with_openai(self, image: Image.Image, prompt: str) -> List[dict]:
+    async def _analyze_with_openai(self, image: Image.Image, prompt: str) -> List[dict]:
         if not self.openai_client:
             raise ConfigError("OpenAI client not initialized.")
         try:
@@ -145,8 +140,8 @@ class AIService:
             image.save(buffer, format="JPEG")
             image_base64 = base64.b64encode(buffer.getvalue()).decode('utf-8')
 
-            response = self.openai_client.chat.completions.create(
-                model=get_settings().ai_model,
+            response = await self.openai_client.chat.completions.create(
+                model=self.settings.ai_model,
                 messages=[
                     {
                         "role": "user",

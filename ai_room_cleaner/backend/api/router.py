@@ -56,7 +56,7 @@ async def analyze_room(request: Request):
         logger.info(f"Successfully retrieved camera image (length: {len(image_base64)} characters)")
         
         logger.info("Starting AI analysis in a background thread...")
-        messes = await run_in_threadpool(state.ai_service.analyze_room_for_mess, image_base64)
+        messes = await state.ai_service.analyze_room_for_mess(image_base64)
         logger.info(f"Analysis complete. Found {len(messes)} items: {messes}")
         
         total_possible_score = 100

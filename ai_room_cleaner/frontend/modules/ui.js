@@ -1,12 +1,14 @@
-const messesList = document.getElementById('messes-list');
-const tasksCountEl = document.getElementById('tasks-count');
-const cleanlinessScoreEl = document.getElementById('cleanliness-score');
-const loadingOverlay = document.getElementById('loading-overlay');
-const errorToast = document.getElementById('error-toast');
-const historyList = document.getElementById('history-list');
-const historyEmptyState = document.getElementById('history-empty-state');
-const resultsContainer = document.getElementById('results-container');
-const emptyState = document.getElementById('empty-state');
+const uiElements = {
+    messesList: document.getElementById('messes-list'),
+    tasksCount: document.getElementById('tasks-count'),
+    cleanlinessScore: document.getElementById('cleanliness-score'),
+    loadingOverlay: document.getElementById('loading-overlay'),
+    errorToast: document.getElementById('error-toast'),
+    historyList: document.getElementById('history-list'),
+    historyEmptyState: document.getElementById('history-empty-state'),
+    resultsContainer: document.getElementById('results-container'),
+    emptyState: document.getElementById('empty-state'),
+};
 
 const createMessItem = (task) => {
     const li = document.createElement('li');
@@ -16,40 +18,51 @@ const createMessItem = (task) => {
     return li;
 };
 
+export const updateStatus = (message, isError = false) => {
+    const statusEl = uiElements.errorToast;
+    statusEl.textContent = message;
+    statusEl.classList.toggle('error', isError);
+    statusEl.classList.remove('hidden');
+
+    setTimeout(() => {
+        statusEl.classList.add('hidden');
+    }, 5000);
+};
+
 export const updateMessesList = (tasks) => {
     if (tasks.length === 0) {
         showEmptyState();
         return;
     }
     
-    messesList.innerHTML = '';
+    uiElements.messesList.innerHTML = '';
     const fragment = document.createDocumentFragment();
     tasks.forEach(task => {
         fragment.appendChild(createMessItem(task));
     });
-    messesList.appendChild(fragment);
+    uiElements.messesList.appendChild(fragment);
 
-    tasksCountEl.textContent = tasks.length;
-    emptyState.classList.add('hidden');
-    resultsContainer.classList.remove('hidden');
-    messesList.classList.remove('hidden');
+    uiElements.tasksCount.textContent = tasks.length;
+    uiElements.emptyState.classList.add('hidden');
+    uiElements.resultsContainer.classList.remove('hidden');
+    uiElements.messesList.classList.remove('hidden');
 };
 
 export const showEmptyState = () => {
-    messesList.innerHTML = '';
-    messesList.classList.add('hidden');
-    tasksCountEl.textContent = 0;
-    emptyState.classList.remove('hidden');
+    uiElements.messesList.innerHTML = '';
+    uiElements.messesList.classList.add('hidden');
+    uiElements.tasksCount.textContent = 0;
+    uiElements.emptyState.classList.remove('hidden');
 };
 
 export const updateCleanlinessScore = (score) => {
-    cleanlinessScoreEl.textContent = `${score}%`;
+    uiElements.cleanlinessScore.textContent = `${score}%`;
     if (score >= 80) {
-        cleanlinessScoreEl.style.color = 'var(--success-color)';
+        uiElements.cleanlinessScore.style.color = 'var(--success-color)';
     } else if (score >= 50) {
-        cleanlinessScoreEl.style.color = 'var(--secondary-color)';
+        uiElements.cleanlinessScore.style.color = 'var(--secondary-color)';
     } else {
-        cleanlinessScoreEl.style.color = 'var(--error-color)';
+        uiElements.cleanlinessScore.style.color = 'var(--error-color)';
     }
 };
 

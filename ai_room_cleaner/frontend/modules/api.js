@@ -1,8 +1,13 @@
-const API_BASE_URL = "api";
+const getApiBaseUrl = () => {
+    // In a real app, this might come from a config file or env variable
+    // For this project, we'll assume the API is at the same origin under /api
+    return `${window.location.origin}/api`;
+};
 
 const getApiUrl = (endpoint) => {
+    const baseUrl = getApiBaseUrl();
     // URL constructor for robust URL creation
-    const url = new URL(`${API_BASE_URL}${endpoint}`, window.location.origin);
+    const url = new URL(endpoint, baseUrl);
     return url.href;
 };
 
