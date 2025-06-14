@@ -61,7 +61,7 @@ const apiService = async (endpoint, options = {}) => {
 
 export const analyzeRoom = async () => {
     try {
-        return await apiService('/analyze', { method: 'POST' });
+        return await apiService('/api/v1/analyze-room-secure', { method: 'POST' });
     } catch (error) {
         console.error('Error analyzing room:', error);
         throw error;

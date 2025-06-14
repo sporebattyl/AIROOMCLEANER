@@ -25,8 +25,7 @@ const createMessItem = (task) => {
 export const updateStatus = (message, isError = false) => {
     const statusEl = uiElements.errorToast;
     statusEl.textContent = message;
-    statusEl.classList.toggle('error', isError);
-    statusEl.classList.remove('hidden');
+    statusEl.className = isError ? 'error' : ''; // Batch class changes
 
     setTimeout(() => {
         statusEl.classList.add('hidden');
@@ -39,14 +38,17 @@ export const updateMessesList = (tasks) => {
         return;
     }
     
-    uiElements.messesList.innerHTML = '';
     const fragment = document.createDocumentFragment();
     tasks.forEach(task => {
         fragment.appendChild(createMessItem(task));
     });
-    uiElements.messesList.appendChild(fragment);
 
+    // Batch DOM writes
+    uiElements.messesList.innerHTML = '';
+    uiElements.messesList.appendChild(fragment);
     uiElements.tasksCount.textContent = tasks.length;
+    
+    // Batch class changes
     uiElements.emptyState.classList.add('hidden');
     uiElements.resultsContainer.classList.remove('hidden');
     uiElements.messesList.classList.remove('hidden');
@@ -54,9 +56,12 @@ export const updateMessesList = (tasks) => {
 
 export const showEmptyState = () => {
     uiElements.messesList.innerHTML = '';
-    uiElements.messesList.classList.add('hidden');
     uiElements.tasksCount.textContent = 0;
+
+    // Batch class changes
+    uiElements.messesList.classList.add('hidden');
     uiElements.emptyState.classList.remove('hidden');
+    uiElements.resultsContainer.classList.add('hidden');
 };
 
 export const updateCleanlinessScore = (score) => {
@@ -92,10 +97,10 @@ export const showError = (error, retryCallback = null) => {
         }
     }
     
-    uiElements.errorToast.innerHTML = ''; // Clear previous errors
+    const fragment = document.createDocumentFragment();
     const errorSpan = document.createElement('span');
     errorSpan.textContent = errorMessage;
-    uiElements.errorToast.appendChild(errorSpan);
+    fragment.appendChild(errorSpan);
 
     if (retryCallback) {
         const retryButton = document.createElement('button');
@@ -104,9 +109,11 @@ export const showError = (error, retryCallback = null) => {
             clearError();
             retryCallback();
         };
-        uiElements.errorToast.appendChild(retryButton);
+        fragment.appendChild(retryButton);
     }
 
+    uiElements.errorToast.innerHTML = ''; // Clear previous errors
+    uiElements.errorToast.appendChild(fragment);
     uiElements.errorToast.classList.remove('hidden');
 
     // Do not auto-hide if there's a retry button
@@ -140,6 +147,8 @@ const createHistoryItem = (item) => {
 
 export const showHistoryLoading = () => {
     uiElements.historyList.innerHTML = '<li>Loading history...</li>';
+    
+    // Batch class changes
     uiElements.historyEmptyState.classList.add('hidden');
     uiElements.historyList.classList.remove('hidden');
 };
@@ -151,23 +160,26 @@ export const hideHistoryLoading = () => {
 
 export const updateHistoryList = (history) => {
     hideHistoryLoading();
+    const fragment = document.createDocumentFragment();
+
     if (history.length === 0) {
         uiElements.historyEmptyState.classList.remove('hidden');
         uiElements.historyList.classList.add('hidden');
     } else {
-        uiElements.historyEmptyState.classList.add('hidden');
-        uiElements.historyList.classList.remove('hidden');
-        uiElements.historyList.innerHTML = '';
-        const fragment = document.createDocumentFragment();
         history.forEach(item => {
             fragment.appendChild(createHistoryItem(item));
         });
+        uiElements.historyList.innerHTML = '';
         uiElements.historyList.appendChild(fragment);
+        uiElements.historyEmptyState.classList.add('hidden');
+        uiElements.historyList.classList.remove('hidden');
     }
 };
 
 export const clearHistory = () => {
     uiElements.historyList.innerHTML = '';
+    
+    // Batch class changes
     uiElements.historyEmptyState.classList.remove('hidden');
     uiElements.historyList.classList.add('hidden');
 };

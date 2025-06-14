@@ -1,10 +1,20 @@
-import pyvips
+try:
+    import pyvips
+    VIPS_AVAILABLE = True
+except (ImportError, OSError) as e:
+    pyvips = None
+    VIPS_AVAILABLE = False
+    VIPS_ERROR = str(e)
+
 from backend.core.config import Settings
 from loguru import logger
 from backend.core.exceptions import ImageProcessingError
 
 def configure_pyvips(settings: Settings):
     """Configures pyvips settings based on application configuration."""
+    if not VIPS_AVAILABLE:
+        logger.warning(f"pyvips not available, skipping configuration. Error: {VIPS_ERROR}")
+        return
     try:
         pyvips.cache_set_max_mem(settings.vips_cache_max * 1024 * 1024)
         logger.info(f"pyvips configured with cache_max_mem={settings.vips_cache_max}MB")
@@ -16,6 +26,10 @@ def resize_image_with_vips(image_bytes: bytes, settings: Settings) -> bytes:
     """
     Resizes an image using pyvips with memory-saving strategies and error handling.
     """
+    if not VIPS_AVAILABLE:
+        logger.warning(f"pyvips not available, returning original image bytes. Error: {VIPS_ERROR}")
+        return image_bytes
+
     if not image_bytes:
         raise ImageProcessingError("Empty image data provided")
     
@@ -45,7 +59,7 @@ def resize_image_with_vips(image_bytes: bytes, settings: Settings) -> bytes:
         original_size = max(image.width, image.height)
         
         # Aggressive downsampling for high-risk images
-        if (image.width > settings.high_risk_dimension_threshold or 
+        if (image.width > settings.high_risk_dimension_threshold or
             image.height > settings.high_risk_dimension_threshold):
             downsample_factor = original_size / settings.high_risk_dimension_threshold
             logger.warning(f"High-risk image detected. Aggressively downsampling by factor {downsample_factor:.2f}")

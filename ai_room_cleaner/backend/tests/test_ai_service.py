@@ -36,5 +36,38 @@ async def test_analyze_room_empty_image(ai_service):
     """Test handling of empty image data."""
     empty_image = base64.b64encode(b"").decode()
     
-    with pytest.raises(AIError, match="Decoded image data is empty"):
+    with pytest.raises(AIError, match="Invalid or empty image data provided."):
         await ai_service.analyze_room_for_mess(empty_image)
+
+@pytest.mark.asyncio
+async def test_analyze_with_gemini_api_error(ai_service):
+    """Test handling of a non-200 API response from Gemini."""
+    test_image = base64.b64encode(b"fake_image_data").decode()
+    
+    with patch('backend.services.ai_service.resize_image_with_vips', return_value=b"resized_data"), \
+         patch.object(ai_service, 'gemini_client', new_callable=AsyncMock) as mock_gemini:
+
+        mock_gemini.generate_content_async.side_effect = Exception("API call failed")
+        
+        with pytest.raises(AIError, match="Failed to analyze image with Gemini."):
+            await ai_service.analyze_room_for_mess(test_image)
+
+@pytest.mark.asyncio
+async def test_analyze_with_gemini_malformed_response(ai_service):
+    """Test handling of a malformed JSON response from Gemini."""
+    test_image = base64.b64encode(b"fake_image_data").decode()
+    
+    with patch('backend.services.ai_service.resize_image_with_vips', return_value=b"resized_data"), \
+         patch.object(ai_service, 'gemini_client') as mock_gemini:
+        
+        mock_response = AsyncMock()
+        # Configure the mock to simulate a response with no valid text content
+        mock_response.parts = []
+        mock_response.prompt_feedback = None
+        
+        # Simulate the behavior of the real object's async method
+        gemini_async_mock = AsyncMock(return_value=mock_response)
+        mock_gemini.generate_content_async = gemini_async_mock
+
+        result = await ai_service.analyze_room_for_mess(test_image)
+        assert result[0]["reason"] == "Empty response"

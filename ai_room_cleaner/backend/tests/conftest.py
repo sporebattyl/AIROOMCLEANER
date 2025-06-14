@@ -33,7 +33,7 @@ def mock_settings():
     return settings
 
 @pytest.fixture
-async def ai_service(mock_settings):
+def ai_service(mock_settings):
     """Create AI service instance for testing."""
     with patch('backend.services.ai_service.genai'), \
          patch('backend.services.ai_service.configure_pyvips'):

@@ -79,25 +79,6 @@
         <p>&copy; 2025 AI Room Cleaner. All rights reserved.</p>
     </footer>
 
-<script>
-    window.addEventListener('error', function(e) {
-        if (e.filename && e.filename.includes('modules/')) {
-            console.error('Module loading failed:', e);
-            // Fallback to inline script or show error message
-        }
-    });
-    </script>
     <script src="app.js" type="module"></script>
-    <script>
-        window.addEventListener('error', (event) => {
-            console.error('Global error:', event.error);
-            // Show user-friendly error message
-        });
-    
-        window.addEventListener('unhandledrejection', (event) => {
-            console.error('Unhandled promise rejection:', event.reason);
-            // Handle async errors gracefully
-        });
-    </script>
 </body>
 </html>

@@ -32,7 +32,7 @@ except ImportError:
     OPENAI_AVAILABLE = False
 
 from backend.core.config import get_settings
-from backend.core.exceptions import AIError, ConfigError
+from backend.core.exceptions import AIError, ConfigError, ImageProcessingError
 
 
 
