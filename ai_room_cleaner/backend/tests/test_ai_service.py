@@ -31,7 +31,7 @@ def test_initialization_openai():
     with patch('backend.services.ai_service.get_settings', return_value=mock_settings):
         with patch('backend.services.ai_service.openai') as mock_openai:
             service = AIService(mock_settings)
-            mock_openai.OpenAI.assert_called_once_with(api_key='test-openai-key')
+            mock_openai.AsyncOpenAI.assert_called_once_with(api_key='test-openai-key')
             assert service.openai_client is not None
             assert service.gemini_client is None
 

@@ -50,8 +50,8 @@ async def lifespan(app: FastAPI):
         logger.info("Essential configuration is valid.")
     except Exception as e:
         logger.error(f"Failed to initialize application state: {e}", exc_info=True)
-        # Depending on the desired behavior, you might want to exit the application
-        # if the state cannot be initialized. For now, we just log the error.
+        import sys
+        sys.exit(1)
     
     logger.info("--- Startup Complete ---")
     yield

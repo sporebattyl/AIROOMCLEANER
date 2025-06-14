@@ -70,7 +70,7 @@ async def analyze_room(request: Request):
             "cleanliness_score": cleanliness_score
         }
 
-        state.add_analysis_to_history(analysis_result)
+        await state.add_analysis_to_history(analysis_result)
         
         return analysis_result
     except ConfigError as e:

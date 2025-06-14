@@ -26,27 +26,27 @@ class State:
         self.history: List[Dict[str, Any]] = []
         self.load_history()
 
-    def add_analysis_to_history(self, analysis: Dict[str, Any]):
+    async def add_analysis_to_history(self, analysis: Dict[str, Any]):
         """Adds a new analysis result to the history and saves it."""
         self.history.insert(0, analysis)
         # Keep history to a reasonable size
         if len(self.history) > 50:
             self.history = self.history[:50]
-        self.save_history()
+        await self.save_history()
 
     def get_history(self) -> List[Dict[str, Any]]:
         """Returns the current analysis history."""
         return self.history
 
-    def save_history(self):
-        """Saves the current analysis history to a JSON file."""
+    async def save_history(self):
+        """Saves the analysis history to a file asynchronously."""
         try:
+            import aiofiles
             os.makedirs(os.path.dirname(self.history_file), exist_ok=True)
-            with open(self.history_file, "w") as f:
-                json.dump(self.history, f, indent=2)
-            logger.info(f"Saved {len(self.history)} history items to {self.history_file}")
+            async with aiofiles.open(self.history_file, "w") as f:
+                await f.write(json.dumps(self.history, indent=2))
         except Exception as e:
-            logger.error(f"Failed to save history to {self.history_file}: {e}", exc_info=True)
+            logger.error(f"Failed to save history: {e}", exc_info=True)
 
     def load_history(self):
         """Loads analysis history from a JSON file."""

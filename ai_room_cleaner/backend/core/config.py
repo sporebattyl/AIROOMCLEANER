@@ -70,6 +70,16 @@ class Settings(BaseSettings):
         alias="HISTORY_FILE_PATH",
         description="The file path to store analysis history."
     )
+max_image_size_mb: int = Field(
+        default=1,
+        alias="MAX_IMAGE_SIZE_MB",
+        description="Max image file size in megabytes."
+    )
+    max_image_dimension: int = Field(
+        default=2048,
+        alias="MAX_IMAGE_DIMENSION",
+        description="Max width or height for an image."
+    )
 
     @model_validator(mode='before')
     @classmethod

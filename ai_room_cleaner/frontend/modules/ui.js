@@ -67,11 +67,11 @@ export const updateCleanlinessScore = (score) => {
 };
 
 export const showLoading = () => {
-    loadingOverlay.classList.remove('hidden');
+    uiElements.loadingOverlay.classList.remove('hidden');
 };
 
 export const hideLoading = () => {
-    loadingOverlay.classList.add('hidden');
+    uiElements.loadingOverlay.classList.add('hidden');
 };
 
 export const showError = (error, retryCallback = null) => {
@@ -88,10 +88,10 @@ export const showError = (error, retryCallback = null) => {
         }
     }
     
-    errorToast.innerHTML = ''; // Clear previous errors
+    uiElements.errorToast.innerHTML = ''; // Clear previous errors
     const errorSpan = document.createElement('span');
     errorSpan.textContent = errorMessage;
-    errorToast.appendChild(errorSpan);
+    uiElements.errorToast.appendChild(errorSpan);
 
     if (retryCallback) {
         const retryButton = document.createElement('button');
@@ -100,21 +100,21 @@ export const showError = (error, retryCallback = null) => {
             clearError();
             retryCallback();
         };
-        errorToast.appendChild(retryButton);
+        uiElements.errorToast.appendChild(retryButton);
     }
 
-    errorToast.classList.remove('hidden');
+    uiElements.errorToast.classList.remove('hidden');
 
     // Do not auto-hide if there's a retry button
     if (!retryCallback) {
         setTimeout(() => {
-            errorToast.classList.add('hidden');
+            uiElements.errorToast.classList.add('hidden');
         }, 5000);
     }
 };
 
 export const clearError = () => {
-    errorToast.classList.add('hidden');
+    uiElements.errorToast.classList.add('hidden');
 };
 
 export const toggleTheme = () => {
@@ -132,7 +132,7 @@ const createHistoryItem = (item) => {
     dateSpan.textContent = item.date;
 
     const scoreSpan = document.createElement('span');
-    scoreSpan.textContent = `${item.score}%`;
+    scoreSpan.textContent = `${item.cleanliness_score}%`;
 
     li.appendChild(dateSpan);
     li.appendChild(scoreSpan);
@@ -141,39 +141,39 @@ const createHistoryItem = (item) => {
 };
 
 export const showHistoryLoading = () => {
-    historyList.innerHTML = '<li>Loading history...</li>';
-    historyEmptyState.classList.add('hidden');
-    historyList.classList.remove('hidden');
+    uiElements.historyList.innerHTML = '<li>Loading history...</li>';
+    uiElements.historyEmptyState.classList.add('hidden');
+    uiElements.historyList.classList.remove('hidden');
 };
 
 export const hideHistoryLoading = () => {
-    historyList.innerHTML = '';
+    uiElements.historyList.innerHTML = '';
 };
 
 
 export const updateHistoryList = (history) => {
     hideHistoryLoading();
     if (history.length === 0) {
-        historyEmptyState.classList.remove('hidden');
-        historyList.classList.add('hidden');
+        uiElements.historyEmptyState.classList.remove('hidden');
+        uiElements.historyList.classList.add('hidden');
     } else {
-        historyEmptyState.classList.add('hidden');
-        historyList.classList.remove('hidden');
-        historyList.innerHTML = '';
+        uiElements.historyEmptyState.classList.add('hidden');
+        uiElements.historyList.classList.remove('hidden');
+        uiElements.historyList.innerHTML = '';
         const fragment = document.createDocumentFragment();
         history.forEach(item => {
             fragment.appendChild(createHistoryItem(item));
         });
-        historyList.appendChild(fragment);
+        uiElements.historyList.appendChild(fragment);
     }
 };
 
 export const clearHistory = () => {
-    historyList.innerHTML = '';
-    historyEmptyState.classList.remove('hidden');
-    historyList.classList.add('hidden');
+    uiElements.historyList.innerHTML = '';
+    uiElements.historyEmptyState.classList.remove('hidden');
+    uiElements.historyList.classList.add('hidden');
 };
 
 export const showResults = () => {
-    resultsContainer.classList.remove('hidden');
+    uiElements.resultsContainer.classList.remove('hidden');
 };

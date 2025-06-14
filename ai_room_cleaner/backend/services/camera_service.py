@@ -21,7 +21,7 @@ async def get_camera_image(camera_entity_id: str, settings: Settings) -> str:
         raise ConfigError("Supervisor token is not configured.")
 
     api_url = f"{settings.supervisor_url}/camera_proxy/{camera_entity_id}"
-    headers = {"Authorization": f"Bearer {settings.supervisor_token}"}
+    headers = {"Authorization": f"Bearer {settings.supervisor_token.get_secret_value()}"}
 
     try:
         async with httpx.AsyncClient() as client:

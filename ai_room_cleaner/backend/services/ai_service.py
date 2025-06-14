@@ -10,7 +10,6 @@ import json
 from loguru import logger
 import re
 from typing import List
-from pydantic import SecretStr
 
 import bleach
 from PIL import Image
@@ -32,9 +31,6 @@ from backend.core.config import get_settings
 from backend.core.exceptions import AIError, ConfigError
 
 
-# Define constraints for image processing to prevent issues with large uploads.
-MAX_IMAGE_SIZE_MB = 1  # Max image file size in megabytes.
-MAX_IMAGE_DIMENSION = 2048  # Max width or height for an image.
 
 # Global flag to ensure the Gemini client is configured only once.
 
@@ -44,6 +40,8 @@ class AIService:
         self.settings = settings
         self.gemini_client = None
         self.openai_client = None
+        self.MAX_IMAGE_SIZE_MB = settings.max_image_size_mb
+        self.MAX_IMAGE_DIMENSION = settings.max_image_dimension
         self._initialize_clients()
 
     def _initialize_clients(self):
@@ -169,10 +167,10 @@ class AIService:
         # Check size based on a rough estimation of bytes per pixel
         # This is not perfect but avoids saving to buffer just for a size check.
         estimated_size = img.width * img.height * 4  # RGBA
-        if estimated_size > MAX_IMAGE_SIZE_MB * 1024 * 1024 or \
-           img.width > MAX_IMAGE_DIMENSION or img.height > MAX_IMAGE_DIMENSION:
+        if estimated_size > self.MAX_IMAGE_SIZE_MB * 1024 * 1024 or \
+           img.width > self.MAX_IMAGE_DIMENSION or img.height > self.MAX_IMAGE_DIMENSION:
             logger.info("Image is large, resizing...")
-            img.thumbnail((MAX_IMAGE_DIMENSION, MAX_IMAGE_DIMENSION))
+            img.thumbnail((self.MAX_IMAGE_DIMENSION, self.MAX_IMAGE_DIMENSION))
         return img
 
     def _parse_ai_response(self, text_content: str) -> List[dict]:
