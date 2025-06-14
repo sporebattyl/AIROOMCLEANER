@@ -19,3 +19,7 @@ class ConfigError(AppException):
     """Custom exception for configuration errors."""
     def __init__(self, detail: str = "Configuration error."):
         super().__init__(status_code=500, detail=detail)
+class ImageProcessingError(AppException):
+    """Custom exception for image processing errors."""
+    def __init__(self, detail: str = "Image processing error."):
+        super().__init__(status_code=422, detail=detail)

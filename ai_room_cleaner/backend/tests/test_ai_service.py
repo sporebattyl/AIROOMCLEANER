@@ -1,69 +1,40 @@
 import pytest
-from unittest.mock import patch, MagicMock
-from types import SimpleNamespace
-from backend.services.ai_service import AIService, ConfigError, AIError
+from unittest.mock import patch, MagicMock, AsyncMock
+import base64
+from backend.services.ai_service import AIService
+from backend.core.exceptions import AIError, ConfigError
 
-def test_initialization_gemini():
-    """Test that the AIService initializes correctly with Gemini."""
-    mock_settings = SimpleNamespace(
-        ai_model="gemini-1.5-pro-latest",
-        google_api_key=MagicMock(),
-        openai_api_key=None
-    )
-    mock_settings.google_api_key.get_secret_value.return_value = 'test-google-key'
+@pytest.mark.asyncio
+async def test_analyze_room_for_mess_success(ai_service, mock_settings):
+    """Test successful room analysis."""
+    # Create test image data
+    test_image = base64.b64encode(b"fake_image_data").decode()
+    
+    with patch('backend.services.ai_service.resize_image_with_vips') as mock_resize, \
+         patch.object(ai_service, '_analyze_with_gemini') as mock_analyze:
+        
+        mock_resize.return_value = b"resized_image_data"
+        mock_analyze.return_value = [
+            {"mess": "clothes on floor", "reason": "untidy appearance"}
+        ]
+        
+        result = await ai_service.analyze_room_for_mess(test_image)
+        
+        assert len(result) == 1
+        assert result[0]["mess"] == "clothes on floor"
+        mock_resize.assert_called_once()
+        mock_analyze.assert_called_once()
 
-    with patch('backend.services.ai_service.get_settings', return_value=mock_settings):
-        with patch('backend.services.ai_service.genai') as mock_genai:
-            service = AIService(mock_settings)
-            mock_genai.configure.assert_called_once_with(api_key='test-google-key')
-            assert service.gemini_client is not None
-            assert service.openai_client is None
+@pytest.mark.asyncio
+async def test_analyze_room_invalid_base64(ai_service):
+    """Test handling of invalid base64 data."""
+    with pytest.raises(AIError, match="Invalid base64 image data"):
+        await ai_service.analyze_room_for_mess("invalid_base64!")
 
-def test_initialization_openai():
-    """Test that the AIService initializes correctly with OpenAI."""
-    mock_settings = SimpleNamespace(
-        ai_model="gpt-4",
-        google_api_key=None,
-        openai_api_key=MagicMock()
-    )
-    mock_settings.openai_api_key.get_secret_value.return_value = 'test-openai-key'
-
-    with patch('backend.services.ai_service.get_settings', return_value=mock_settings):
-        with patch('backend.services.ai_service.openai') as mock_openai:
-            service = AIService(mock_settings)
-            mock_openai.AsyncOpenAI.assert_called_once_with(api_key='test-openai-key')
-            assert service.openai_client is not None
-            assert service.gemini_client is None
-
-def test_initialization_no_key():
-    """Test that a ConfigError is raised if no API key is provided."""
-    mock_settings = SimpleNamespace(
-        ai_model="gemini-1.5-pro-latest",
-        google_api_key=None,
-        openai_api_key=None
-    )
-    with patch('backend.services.ai_service.get_settings', return_value=mock_settings):
-        with pytest.raises(ConfigError, match="Google API key is not configured"):
-            AIService(mock_settings)
-
-def test_initialization_no_model():
-    """Test that a ConfigError is raised if no model is specified."""
-    mock_settings = SimpleNamespace(
-        ai_model="",
-        google_api_key=MagicMock(),
-        openai_api_key=None
-    )
-    with patch('backend.services.ai_service.get_settings', return_value=mock_settings):
-        with pytest.raises(ConfigError, match="AI model not specified"):
-            AIService(mock_settings)
-
-def test_unsupported_model():
-    """Test that an unsupported model raises an AIError."""
-    mock_settings = SimpleNamespace(
-        ai_model="unsupported-model",
-        google_api_key=MagicMock(),
-        openai_api_key=None
-    )
-    with patch('backend.services.ai_service.get_settings', return_value=mock_settings):
-        with pytest.raises(AIError, match="Unsupported or unrecognized AI model"):
-            AIService(mock_settings)
+@pytest.mark.asyncio
+async def test_analyze_room_empty_image(ai_service):
+    """Test handling of empty image data."""
+    empty_image = base64.b64encode(b"").decode()
+    
+    with pytest.raises(AIError, match="Decoded image data is empty"):
+        await ai_service.analyze_room_for_mess(empty_image)

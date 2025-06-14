@@ -19,13 +19,17 @@ from backend.utils.image_processing import resize_image_with_vips, configure_pyv
 # even if only one provider's libraries are installed.
 try:
     import google.generativeai as genai
+    GOOGLE_AVAILABLE = True
 except ImportError:
     genai = None
+    GOOGLE_AVAILABLE = False
 
 try:
     import openai
+    OPENAI_AVAILABLE = True
 except ImportError:
     openai = None
+    OPENAI_AVAILABLE = False
 
 from backend.core.config import get_settings
 from backend.core.exceptions import AIError, ConfigError
@@ -92,28 +96,48 @@ class AIService:
 
     async def analyze_room_for_mess(self, image_base64: str) -> List[dict]:
         logger.info(f"Using AI model: {self.settings.ai_model}")
+        
+        # Validate input
+        if not image_base64 or not isinstance(image_base64, str):
+            raise AIError("Invalid or empty image data provided.")
+        
         try:
-            image_bytes = base64.b64decode(image_base64)
+            # Validate base64 format
+            try:
+                image_bytes = base64.b64decode(image_base64, validate=True)
+            except Exception as e:
+                raise AIError(f"Invalid base64 image data: {str(e)}")
             
-            # Use the new vips utility for resizing
-            resized_image_bytes = resize_image_with_vips(image_bytes, self.settings)
+            # Validate image size
+            if len(image_bytes) == 0:
+                raise AIError("Decoded image data is empty.")
             
-            # Since we removed Pillow, we will pass the image bytes directly
-            # to the analysis functions. We will need to refactor them to
-            # handle bytes instead of a Pillow Image object.
+            if len(image_bytes) > self.MAX_IMAGE_SIZE_MB * 1024 * 1024:
+                raise AIError(f"Image size ({len(image_bytes)} bytes) exceeds maximum allowed size ({self.MAX_IMAGE_SIZE_MB}MB).")
+            
+            # Process image with better error handling
+            try:
+                resized_image_bytes = resize_image_with_vips(image_bytes, self.settings)
+            except Exception as e:
+                logger.error(f"Image processing failed: {e}", exc_info=True)
+                raise ImageProcessingError(f"Failed to process image: {str(e)}")
             
             sanitized_prompt = self._sanitize_prompt(self.settings.ai_prompt)
             model_lower = self.settings.ai_model.lower()
-
+    
             if "gemini" in model_lower or "google" in model_lower:
                 return await self._analyze_with_gemini(resized_image_bytes, sanitized_prompt)
             elif "gpt" in model_lower or "openai" in model_lower:
                 return await self._analyze_with_openai(resized_image_bytes, sanitized_prompt)
             else:
                 raise AIError(f"Unsupported or unrecognized AI model: {self.settings.ai_model}")
+                
+        except (AIError, ImageProcessingError, ConfigError):
+            # Re-raise known exceptions
+            raise
         except Exception as e:
-            logger.error(f"Failed to decode or process image: {e}", exc_info=True)
-            raise AIError("Invalid image format or processing error.")
+            logger.error(f"Unexpected error in room analysis: {e}", exc_info=True)
+            raise AIError(f"Unexpected error during analysis: {str(e)}")
 
     async def _analyze_with_gemini(self, image_bytes: bytes, prompt: str) -> List[dict]:
         if not self.gemini_client:

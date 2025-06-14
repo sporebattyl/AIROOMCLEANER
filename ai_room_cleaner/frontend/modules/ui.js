@@ -1,13 +1,17 @@
-const uiElements = {
-    messesList: document.getElementById('messes-list'),
-    tasksCount: document.getElementById('tasks-count'),
-    cleanlinessScore: document.getElementById('cleanliness-score'),
-    loadingOverlay: document.getElementById('loading-overlay'),
-    errorToast: document.getElementById('error-toast'),
-    historyList: document.getElementById('history-list'),
-    historyEmptyState: document.getElementById('history-empty-state'),
-    resultsContainer: document.getElementById('results-container'),
-    emptyState: document.getElementById('empty-state'),
+let uiElements = {};
+
+export const initializeUIElements = () => {
+    uiElements = {
+        messesList: document.getElementById('messes-list'),
+        tasksCount: document.getElementById('tasks-count'),
+        cleanlinessScore: document.getElementById('cleanliness-score'),
+        loadingOverlay: document.getElementById('loading-overlay'),
+        errorToast: document.getElementById('error-toast'),
+        historyList: document.getElementById('history-list'),
+        historyEmptyState: document.getElementById('history-empty-state'),
+        resultsContainer: document.getElementById('results-container'),
+        emptyState: document.getElementById('empty-state'),
+    };
 };
 
 const createMessItem = (task) => {
@@ -117,12 +121,6 @@ export const clearError = () => {
     uiElements.errorToast.classList.add('hidden');
 };
 
-export const toggleTheme = () => {
-    const currentTheme = document.documentElement.getAttribute('data-theme');
-    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-    document.documentElement.setAttribute('data-theme', newTheme);
-    localStorage.setItem('theme', newTheme);
-};
 
 const createHistoryItem = (item) => {
     const li = document.createElement('li');

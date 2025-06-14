@@ -11,13 +11,13 @@ import {
     hideLoading, 
     showError,
     clearError,
-    toggleTheme,
     updateHistoryList,
     clearHistory,
     showResults,
     showEmptyState,
     showHistoryLoading,
-    hideHistoryLoading
+    hideHistoryLoading,
+    initializeUIElements
 } from './modules/ui.js';
 
 function isStorageAvailable(type) {
@@ -79,10 +79,17 @@ if (isStorageAvailable('localStorage')) {
     console.warn("localStorage is not available. Falling back to in-memory storage.");
     const inMemoryStore = {};
     storage = {
-        get: (key, defaultValue = null) => inMemoryStore.hasOwnProperty(key) ? inMemoryStore[key] : defaultValue,
+        get: (key, defaultValue = null) => {
+            return inMemoryStore.hasOwnProperty(key) ? inMemoryStore[key] : defaultValue;
+        },
         set: (key, value) => {
-            inMemoryStore[key] = value;
-            return true;
+            try {
+                inMemoryStore[key] = JSON.parse(JSON.stringify(value)); // Deep copy
+                return true;
+            } catch (error) {
+                console.warn(`Could not store '${key}' in memory:`, error);
+                return false;
+            }
         },
         remove: (key) => {
             if (inMemoryStore.hasOwnProperty(key)) {
@@ -93,6 +100,20 @@ if (isStorageAvailable('localStorage')) {
     };
 }
 
+const CONFIG = {
+    MAX_HISTORY_ITEMS: 50,
+    DEBOUNCE_DELAY: 500,
+    ERROR_DISPLAY_DURATION: 5000,
+    RETRY_ATTEMPTS: 3
+};
+
+const ERROR_MESSAGES = {
+    NETWORK_ERROR: 'Unable to connect to server. Please check your internet connection.',
+    SERVER_ERROR: 'Server error occurred. Please try again later.',
+    ANALYSIS_FAILED: 'Room analysis failed. Please try again.',
+    HISTORY_LOAD_FAILED: 'Could not load analysis history.',
+};
+
 const state = {
     history: [],
     currentTheme: 'light',
@@ -101,6 +122,7 @@ const state = {
 const elements = {};
 
 const setupUI = async () => {
+    initializeUIElements();
     elements.analyzeBtn = document.getElementById('analyze-btn');
     elements.themeToggleBtn = document.getElementById('theme-toggle-btn');
     elements.clearHistoryBtn = document.getElementById('clear-history-btn');
@@ -143,21 +165,12 @@ const handleAnalyzeRoom = async () => {
         const result = await analyzeRoom();
         console.log('Analysis result:', result);
 
-        // Prepend new result to history for immediate UI update
-        state.history.unshift(result);
-        if (state.history.length > 50) {
-            state.history.pop();
-        }
-
-        if (result.tasks.length === 0) {
-            showEmptyState();
-        } else {
-            updateMessesList(result.tasks);
-        }
-
+        updateMessesList(result.tasks);
         updateCleanlinessScore(result.cleanliness_score || 0);
-        updateHistoryList(state.history);
         showResults();
+        
+        // Reload history from server to ensure consistency
+        await loadHistory();
         hideLoading();
     } catch (error) {
         console.error('Analysis error:', error);
@@ -207,9 +220,19 @@ const setupEventListeners = () => {
     elements.messesList.addEventListener('click', handleToggleTask);
 };
 
-const initializeApp = () => {
-    setupUI();
+const initializeApp = async () => {
+    await setupUI();
     setupEventListeners();
 };
 
 document.addEventListener('DOMContentLoaded', initializeApp);
+
+export const cleanup = () => {
+    if (elements.analyzeBtn) {
+        elements.analyzeBtn.removeEventListener('click', handleAnalyzeRoom);
+    }
+    // ... remove other listeners
+};
+
+// Call cleanup when page unloads
+window.addEventListener('beforeunload', cleanup);

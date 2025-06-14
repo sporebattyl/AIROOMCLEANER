@@ -1,8 +1,9 @@
 import logging
+import os
 from functools import lru_cache
 from typing import Optional, List, Any, Dict
 
-from pydantic import Field, model_validator, SecretStr, HttpUrl
+from pydantic import Field, model_validator, SecretStr, HttpUrl, validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 logger = logging.getLogger(__name__)
@@ -98,24 +99,45 @@ class Settings(BaseSettings):
         description="Image dimension above which aggressive downsampling is triggered."
     )
 
-    @model_validator(mode='before')
-    @classmethod
-    def set_and_validate_api_key(cls, values: Any) -> Any:
-        """
-        Validates that at least one API key is provided and sets the primary 'api_key'
-        to be used by the application, preferring Google's key if both are set.
-        """
-        if isinstance(values, dict):
-            google_key = values.get("google_api_key")
-            openai_key = values.get("openai_api_key")
+    @validator('max_image_size_mb')
+    def validate_max_image_size(cls, v):
+        if v <= 0 or v > 50:
+            raise ValueError('max_image_size_mb must be between 1 and 50')
+        return v
+    
+    @validator('max_image_dimension')
+    def validate_max_image_dimension(cls, v):
+        if v < 100 or v > 10000:
+            raise ValueError('max_image_dimension must be between 100 and 10000')
+        return v
+    
+    @validator('vips_concurrency')
+    def validate_vips_concurrency(cls, v):
+        if v < 1 or v > 16:
+            raise ValueError('vips_concurrency must be between 1 and 16')
+        return v
+    
+    @validator('history_file_path')
+    def validate_history_file_path(cls, v):
+        # Ensure directory exists or can be created
+        dir_path = os.path.dirname(v)
+        if dir_path and not os.path.exists(dir_path):
+            try:
+                os.makedirs(dir_path, exist_ok=True)
+            except OSError as e:
+                raise ValueError(f'Cannot create directory for history file: {e}')
+        return v
 
-            key = google_key or openai_key
-            if not key:
-                raise ValueError("An AI provider API key is required. Please set either GOOGLE_API_KEY or OPENAI_API_KEY.")
-
-            values["api_key"] = key
-
-        return values
+    @model_validator(mode='after')
+    def validate_ai_model_and_keys(self) -> 'Settings':
+        """Validate that the AI model matches available API keys."""
+        if self.ai_model:
+            model_lower = self.ai_model.lower()
+            if ("gemini" in model_lower or "google" in model_lower) and not self.google_api_key:
+                raise ValueError(f"Google API key required for model: {self.ai_model}")
+            elif ("gpt" in model_lower or "openai" in model_lower) and not self.openai_api_key:
+                raise ValueError(f"OpenAI API key required for model: {self.ai_model}")
+        return self
 
 
 @lru_cache()

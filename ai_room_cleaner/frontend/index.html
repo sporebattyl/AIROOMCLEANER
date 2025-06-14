@@ -23,7 +23,15 @@
                 <div class="card">
                     <h2>Room Analysis</h2>
                     <p>Click the button below to analyze your room for messes.</p>
-                    <button id="analyze-btn" class="btn btn-primary" aria-label="Analyze room for messes">Analyze Room</button>
+                    <button id="analyze-btn"
+                            class="btn btn-primary"
+                            aria-label="Analyze room for messes"
+                            aria-describedby="analyze-description">
+                        Analyze Room
+                    </button>
+                    <div id="analyze-description" class="sr-only">
+                        Starts AI analysis of your room to identify cleaning tasks
+                    </div>
                 </div>
 
                 <div id="results-container" class="results-card card hidden">
@@ -79,6 +87,17 @@
         }
     });
     </script>
-    <script src="main.js" type="module"></script>
+    <script src="app.js" type="module"></script>
+    <script>
+        window.addEventListener('error', (event) => {
+            console.error('Global error:', event.error);
+            // Show user-friendly error message
+        });
+    
+        window.addEventListener('unhandledrejection', (event) => {
+            console.error('Unhandled promise rejection:', event.reason);
+            // Handle async errors gracefully
+        });
+    </script>
 </body>
 </html>

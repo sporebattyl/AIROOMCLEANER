@@ -16,7 +16,7 @@ class State:
 
     def __init__(self, ai_service: AIService, settings: Settings):
         """
-        Initializes the State with services and loads history from disk.
+        Initializes the State with services. History is loaded separately.
         Args:
             ai_service: An instance of the AIService.
             settings: The application settings object.
@@ -24,7 +24,15 @@ class State:
         self.ai_service = ai_service
         self.history_file = settings.history_file_path
         self.history: List[Dict[str, Any]] = []
-        self.load_history()
+
+    @classmethod
+    async def create(cls, ai_service: AIService, settings: Settings) -> "State":
+        """
+        Asynchronously creates and initializes a State instance.
+        """
+        state = cls(ai_service, settings)
+        await state.load_history()
+        return state
 
     async def add_analysis_to_history(self, analysis: Dict[str, Any]):
         """Adds a new analysis result to the history and saves it."""
@@ -48,16 +56,18 @@ class State:
         except Exception as e:
             logger.error(f"Failed to save history: {e}", exc_info=True)
 
-    def load_history(self):
-        """Loads analysis history from a JSON file."""
+    async def load_history(self):
+        """Loads analysis history from a JSON file asynchronously."""
         if not os.path.exists(self.history_file):
             logger.info(f"History file not found at {self.history_file}. Starting with an empty history.")
             return
         try:
-            with open(self.history_file, "r") as f:
-                self.history = json.load(f)
+            import aiofiles
+            async with aiofiles.open(self.history_file, "r") as f:
+                content = await f.read()
+                self.history = json.loads(content)
             logger.info(f"Loaded {len(self.history)} history items from {self.history_file}")
-        except (json.JSONDecodeError, TypeError) as e:
+        except (json.JSONDecodeError, TypeError, FileNotFoundError) as e:
             logger.error(f"Failed to load or parse history from {self.history_file}: {e}", exc_info=True)
             self.history = []
 
@@ -73,7 +83,7 @@ def get_state() -> "State":
     return _state
 
 
-def initialize_state(ai_service: AIService, settings: Settings) -> "State":
+async def initialize_state(ai_service: AIService, settings: Settings) -> "State":
     """
     Initializes the application state. This should be called once at startup.
     """
@@ -83,5 +93,5 @@ def initialize_state(ai_service: AIService, settings: Settings) -> "State":
         return _state
 
     logger.info("Initializing application state.")
-    _state = State(ai_service, settings)
+    _state = await State.create(ai_service, settings)
     return _state
