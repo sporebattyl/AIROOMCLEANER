@@ -1,47 +1,36 @@
-class AppException(Exception):
-    """Base application exception."""
+from fastapi import HTTPException
+
+class AppException(HTTPException):
+    """Base class for application-specific exceptions."""
     def __init__(self, status_code: int, detail: str):
-        self.status_code = status_code
-        self.detail = detail
-        super().__init__(self.detail)
+        super().__init__(status_code=status_code, detail=detail)
 
-class AIError(AppException):
-    """Custom exception for AI service errors."""
-    def __init__(self, detail: str = "AI service error."):
+class ImageProcessingError(AppException):
+    """Exception raised for errors in the image processing."""
+    def __init__(self, detail: str = "Error processing image."):
         super().__init__(status_code=500, detail=detail)
 
-
-class AIProviderError(AIError):
-    """Raised for errors originating from the AI provider."""
-    def __init__(self, detail: str = "AI provider error."):
-        super().__init__(detail=detail)
-
-
-class InvalidAPIKeyError(AIProviderError):
-    """Raised when the API key is invalid or unauthorized."""
-    def __init__(self, detail: str = "Invalid or unauthorized API key."):
-        super().__init__(detail=detail)
-
-
-class APIResponseError(AIProviderError):
-    """Raised for unexpected or invalid API responses."""
-    def __init__(self, detail: str = "Invalid API response from AI provider."):
-        super().__init__(detail=detail)
-
-
-class CameraError(AppException):
-    """Custom exception for camera service errors."""
-    def __init__(self, detail: str = "Camera service error."):
-        super().__init__(status_code=500, detail=detail)
-
+class AIProviderError(AppException):
+    """Exception raised for errors related to the AI provider."""
+    def __init__(self, detail: str = "Error from AI provider."):
+        super().__init__(status_code=502, detail=detail)
 
 class ConfigError(AppException):
-    """Custom exception for configuration errors."""
+    """Exception raised for configuration errors."""
     def __init__(self, detail: str = "Configuration error."):
         super().__init__(status_code=500, detail=detail)
 
+class CameraError(AppException):
+    """Exception raised for camera-related errors."""
+    def __init__(self, detail: str = "Error with camera service."):
+        super().__init__(status_code=500, detail=detail)
 
-class ImageProcessingError(AppException):
-    """Custom exception for image processing errors."""
-    def __init__(self, detail: str = "Image processing error."):
-        super().__init__(status_code=422, detail=detail)
+class AIError(AppException):
+    """Exception raised for AI service errors."""
+    def __init__(self, detail: str = "An AI service error occurred."):
+        super().__init__(status_code=500, detail=detail)
+
+class InvalidFileTypeError(AppException):
+    """Exception raised for invalid file types."""
+    def __init__(self, detail: str = "Invalid file type."):
+        super().__init__(status_code=400, detail=detail)

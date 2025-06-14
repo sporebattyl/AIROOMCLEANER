@@ -3,3 +3,6 @@
 
 # The endpoint for analyzing the room
 ANALYZE_ROUTE = "/api/v1/analyze-room-secure"
+
+# Allowed MIME types for file uploads
+ALLOWED_MIME_TYPES = {"image/jpeg", "image/png", "image/gif"}

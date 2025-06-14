@@ -4,6 +4,7 @@ to analyze images of a room and identify sources of mess. It supports
 multiple AI providers (Google Gemini, OpenAI GPT) and handles image
 preprocessing, prompt sanitization, and robust parsing of the AI's response.
 """
+import asyncio
 import base64
 from loguru import logger
 from typing import List, Dict, Any
@@ -14,9 +15,7 @@ from backend.core.exceptions import (
     AIError,
     ConfigError,
     ImageProcessingError,
-    AIProviderError,
-    InvalidAPIKeyError,
-    APIResponseError,
+    AIProviderError
 )
 from backend.utils.image_processing import resize_image_with_vips, configure_pyvips
 from .ai_providers import get_ai_provider, AIProvider
@@ -58,7 +57,7 @@ class AIService:
 
         try:
             # Decode, validate, and process the image
-            image_bytes = self._decode_and_validate_image(image_base64)
+            image_bytes = await self._decode_and_validate_image(image_base64)
             resized_image_bytes = self._process_image(image_bytes)
             # Sanitize the prompt to prevent injection attacks
             sanitized_prompt = self._sanitize_prompt(self.settings.AI_PROMPT)
@@ -70,8 +69,6 @@ class AIService:
             AIError,
             ImageProcessingError,
             ConfigError,
-            InvalidAPIKeyError,
-            APIResponseError,
             AIProviderError,
         ) as e:
             logger.error(f"A specific error occurred: {e}")
@@ -80,10 +77,10 @@ class AIService:
             logger.error(f"An unexpected error occurred in room analysis: {e}", exc_info=True)
             raise AIError(f"An unexpected error occurred during analysis: {str(e)}")
 
-    def _decode_and_validate_image(self, image_base64: str) -> bytes:
+    async def _decode_and_validate_image(self, image_base64: str) -> bytes:
         """Decodes, validates, and checks the size of the base64 image."""
         try:
-            image_bytes = base64.b64decode(image_base64, validate=True)
+            image_bytes = await asyncio.to_thread(base64.b64decode, image_base64, validate=True)
         except Exception as e:
             raise AIError(f"Invalid base64 image data: {str(e)}")
 

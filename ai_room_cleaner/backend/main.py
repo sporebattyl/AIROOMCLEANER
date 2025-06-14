@@ -1,4 +1,5 @@
 import os
+import httpx
 from contextlib import asynccontextmanager
 from loguru import logger
 import sys
@@ -18,6 +19,8 @@ import time
 from loguru import logger
 from fastapi import Request, Response
 import json
+from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
+from starlette.responses import JSONResponse
 
 # Enhanced logging configuration
 def configure_logging():
@@ -74,7 +77,7 @@ async def lifespan(app: FastAPI):
         logger.info("AI service and application state initialized.")
         
         logger.info(f"Camera Entity: {settings.camera_entity or 'Not set'}")
-        logger.info(f"AI Model: {settings.ai_model or 'Not set'}")
+        logger.info(f"AI Model: {settings.AI_MODEL or 'Not set'}")
         logger.info(f"API Key configured: {bool(settings.api_key)}")
         logger.info(f"Supervisor URL: {settings.supervisor_url}")
         
@@ -94,9 +97,15 @@ async def lifespan(app: FastAPI):
         logger.error(f"Failed to initialize application state: {e}", exc_info=True)
         import sys
         sys.exit(1)
-    
-    logger.info("--- Startup Complete ---")
-    yield
+
+    # Create a shared httpx.AsyncClient
+    async with httpx.AsyncClient() as client:
+        app.state.http_client = client
+        logger.info("Shared httpx.AsyncClient created.")
+        
+        logger.info("--- Startup Complete ---")
+        yield
+        
     logger.info("--- AI Room Cleaner Shutting Down ---")
 
 app = FastAPI(
@@ -146,6 +155,27 @@ app.add_middleware(
     allow_methods=["GET", "POST"],
     allow_headers=["Content-Type", "Authorization"],
 )
+
+# Middleware to limit request body size
+class RequestSizeLimitMiddleware(BaseHTTPMiddleware):
+    def __init__(self, app, max_size: int):
+        super().__init__(app)
+        self.max_size = max_size
+
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint):
+        if "content-length" not in request.headers:
+            return JSONResponse(status_code=411, content={"detail": "Content-Length required"})
+        
+        content_length = int(request.headers["content-length"])
+        if content_length > self.max_size:
+            return JSONResponse(status_code=413, content={"detail": "Payload too large"})
+        
+        return await call_next(request)
+
+# Add the request size limit middleware
+max_size = get_settings().MAX_REQUEST_SIZE_MB * 1024 * 1024
+app.add_middleware(RequestSizeLimitMiddleware, max_size=max_size)
+
 
 # Include the API router
 app.include_router(api_router, prefix="/api")

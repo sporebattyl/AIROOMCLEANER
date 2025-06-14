@@ -16,14 +16,26 @@ class Settings(BaseSettings):
 
     AI_PROVIDER: str = Field("openai", description="The AI provider to use ('openai' or 'google').")
     AI_MODEL: str = Field("gpt-4-turbo", description="The specific AI model to use.")
+    AI_API_ENDPOINT: Optional[str] = Field(None, description="The API endpoint for the AI service.")
+    AI_API_KEY: Optional[SecretStr] = Field(None, description="The API key for the AI service.")
     
     OPENAI_API_KEY: Optional[SecretStr] = Field(None, description="The API key for OpenAI.")
     GOOGLE_API_KEY: Optional[SecretStr] = Field(None, description="The API key for Google Gemini.")
+
+    history_file_path: str = Field("/data/history.json", description="The path to the history file.")
+    camera_entity: Optional[str] = Field(None, description="The camera entity to use for taking pictures.")
+    api_key: Optional[SecretStr] = Field(None, description="The API key for the service.")
+    supervisor_url: Optional[str] = Field(None, description="The URL for the supervisor.")
+    cors_allowed_origins: list[str] = Field(["*"], description="A list of allowed CORS origins.")
+
+    vips_cache_max: int = Field(100, description="Maximum number of operations to cache for vips.")
+    high_risk_dimension_threshold: int = Field(4096, description="Dimension threshold for high-risk images.")
     
     LOG_LEVEL: str = Field("INFO", description="The logging level for the application.")
     MAX_IMAGE_SIZE_MB: int = Field(10, description="Maximum image size in megabytes.")
     MAX_IMAGE_DIMENSION: int = Field(2048, description="Maximum dimension (width or height) for images.")
     AI_PROMPT: str = Field("Analyze this image and identify areas of mess. Return a list of tasks to clean it up.", description="The prompt to send to the AI.")
+    MAX_REQUEST_SIZE_MB: int = Field(10, description="Maximum request body size in megabytes.")
 
     @field_validator("AI_PROVIDER")
     def validate_ai_provider(cls, v):
