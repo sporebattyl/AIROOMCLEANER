@@ -1,3 +1,8 @@
+const API_ENDPOINTS = Object.freeze({
+    ANALYZE_ROOM: 'v1/analyze-room-secure',
+    HISTORY: 'history',
+});
+
 const getApiBaseUrl = () => {
     // In a real app, this might come from a config file or env variable
     // For this project, we'll assume the API is at the same origin under /api
@@ -29,13 +34,15 @@ export class ServerError extends Error {
 const apiService = async (endpoint, options = {}) => {
     const url = getApiUrl(endpoint);
 
+    const headers = { ...options.headers };
+    if (!(options.body instanceof FormData)) {
+        headers['Content-Type'] = 'application/json';
+    }
+
     try {
         const response = await fetch(url, {
             ...options,
-            headers: {
-                'Content-Type': 'application/json',
-                ...options.headers
-            }
+            headers,
         });
 
         if (!response.ok) {
@@ -59,9 +66,15 @@ const apiService = async (endpoint, options = {}) => {
     }
 };
 
-export const analyzeRoom = async () => {
+export const analyzeRoom = async (imageFile) => {
+    const formData = new FormData();
+    formData.append('file', imageFile);
+
     try {
-        return await apiService('v1/analyze-room-secure', { method: 'POST' });
+        return await apiService(API_ENDPOINTS.ANALYZE_ROOM, {
+            method: 'POST',
+            body: formData,
+        });
     } catch (error) {
         console.error('Error analyzing room:', error);
         throw error;
@@ -70,7 +83,7 @@ export const analyzeRoom = async () => {
 
 export const getHistory = async () => {
     try {
-        return await apiService('history');
+        return await apiService(API_ENDPOINTS.HISTORY);
     } catch (error) {
         console.error('Error fetching history:', error);
         throw error;

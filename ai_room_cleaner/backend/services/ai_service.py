@@ -6,9 +6,12 @@ preprocessing, prompt sanitization, and robust parsing of the AI's response.
 """
 import asyncio
 import base64
+import tempfile
+import shutil
 from loguru import logger
 from typing import List, Dict, Any
 import bleach
+from fastapi import UploadFile
 
 from backend.core.config import Settings
 from backend.core.exceptions import (
@@ -76,6 +79,32 @@ class AIService:
         except Exception as e:
             logger.error(f"An unexpected error occurred in room analysis: {e}", exc_info=True)
             raise AIError(f"An unexpected error occurred during analysis: {str(e)}")
+
+    async def analyze_image_from_upload(
+        self, upload_file: UploadFile
+    ) -> List[Dict[str, Any]]:
+        """
+        Analyzes an image from an UploadFile by streaming it to a temporary file.
+        This avoids loading the entire file into memory.
+        """
+        temp_dir = tempfile.mkdtemp()
+        temp_path = f"{temp_dir}/{upload_file.filename}"
+        try:
+            with open(temp_path, "wb") as buffer:
+                shutil.copyfileobj(upload_file.file, buffer)
+
+            with open(temp_path, "rb") as f:
+                image_bytes = f.read()
+
+            # Now that we have the bytes, we can proceed with existing logic
+            resized_image_bytes = self._process_image(image_bytes)
+            sanitized_prompt = self._sanitize_prompt(self.settings.AI_PROMPT)
+            return await self.ai_provider.analyze_image(
+                resized_image_bytes, sanitized_prompt
+            )
+        finally:
+            shutil.rmtree(temp_dir)
+            await upload_file.close()
 
     async def _decode_and_validate_image(self, image_base64: str) -> bytes:
         """Decodes, validates, and checks the size of the base64 image."""

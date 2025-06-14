@@ -1,4 +1,4 @@
-import { analyzeRoom, getHistory, NetworkError, ServerError } from './api.js';
+import { analyzeRoom, getHistory as fetchHistoryFromServer, NetworkError, ServerError } from './api.js';
 import {
     updateMessesList,
     updateCleanlinessScore,
@@ -12,7 +12,7 @@ import {
     hideHistoryLoading,
 } from './ui.js';
 import {
-    getHistory,
+    getHistory as getHistoryFromState,
     setHistory,
     getCurrentTheme,
     setCurrentTheme,
@@ -24,9 +24,9 @@ import {
 export const loadHistory = async () => {
     showHistoryLoading();
     try {
-        const historyData = await getHistory();
+        const historyData = await fetchHistoryFromServer();
         setHistory(historyData);
-        updateHistoryList(getHistory());
+        updateHistoryList(getHistoryFromState());
     } catch (error) {
         hideHistoryLoading();
         if (error instanceof ServerError) {
@@ -41,14 +41,22 @@ export const loadHistory = async () => {
 
 // Handles the room analysis process, including UI updates and error handling.
 export const handleAnalyzeRoom = async () => {
+    const { fileInput, messesList } = elements;
+    const imageFile = fileInput.files[0];
+
+    if (!imageFile) {
+        showError('Please select an image to analyze.');
+        return;
+    }
+
     showLoading();
     clearError();
 
     try {
-        const result = await analyzeRoom();
+        const result = await analyzeRoom(imageFile);
         console.log('Analysis result:', result);
 
-        updateMessesList(result.tasks);
+        updateMessesList(result.tasks, messesList);
         updateCleanlinessScore(result.cleanliness_score || 0);
         showResults();
         
@@ -90,7 +98,7 @@ export const handleToggleTask = (e) => {
 
 const debounce = (func, delay) => {
     let timeoutId;
-    return (...args) => {
+    return function(...args) {
         clearTimeout(timeoutId);
         timeoutId = setTimeout(() => {
             func.apply(this, args);

@@ -26,7 +26,7 @@ class Settings(BaseSettings):
     camera_entity: Optional[str] = Field(None, description="The camera entity to use for taking pictures.")
     api_key: Optional[SecretStr] = Field(None, description="The API key for the service.")
     supervisor_url: Optional[str] = Field(None, description="The URL for the supervisor.")
-    cors_allowed_origins: list[str] = Field(["*"], description="A list of allowed CORS origins.")
+    cors_allowed_origins: list[str] = Field(["http://localhost:8080", "http://127.0.0.1:8080"], description="A list of allowed CORS origins.")
 
     vips_cache_max: int = Field(100, description="Maximum number of operations to cache for vips.")
     high_risk_dimension_threshold: int = Field(4096, description="Dimension threshold for high-risk images.")
@@ -50,6 +50,6 @@ def get_settings() -> Settings:
     The lru_cache decorator ensures that the Settings object is only created once,
     improving performance by avoiding repeated file reads and object initializations.
     """
-    return Settings()
+    return Settings.model_validate({})
 
 settings = get_settings()
