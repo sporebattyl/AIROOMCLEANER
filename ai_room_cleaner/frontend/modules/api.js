@@ -1,18 +1,15 @@
+import { getApiConfig } from '../config.js';
+import logger from './logger.js';
+
 const API_ENDPOINTS = Object.freeze({
     ANALYZE_ROOM: 'v1/analyze-room-secure',
     HISTORY: 'history',
 });
 
-const getApiBaseUrl = () => {
-    // In a real app, this might come from a config file or env variable
-    // For this project, we'll assume the API is at the same origin under /api
-    return `${window.location.origin}/api/`;
-};
-
 const getApiUrl = (endpoint) => {
-    const baseUrl = getApiBaseUrl();
+    const { apiUrl } = getApiConfig();
     // URL constructor for robust URL creation
-    const url = new URL(endpoint, baseUrl);
+    const url = new URL(endpoint, apiUrl);
     return url.href;
 };
 
@@ -56,12 +53,15 @@ const apiService = async (endpoint, options = {}) => {
             throw new ServerError(errorMessage, response.status);
         }
 
-        return response.json();
+        const data = await response.json();
+        logger.info({ url, status: response.status }, 'API call successful');
+        return data;
     } catch (error) {
         if (error instanceof ServerError) {
+            logger.error({ url, status: error.status, error: error.message }, 'Server error');
             throw error;
         }
-        console.error(`API call to ${url} failed:`, error);
+        logger.error({ url, error: error.message }, 'Network error');
         throw new NetworkError('Failed to connect to the server. Please check your network connection.');
     }
 };
@@ -76,7 +76,7 @@ export const analyzeRoom = async (imageFile) => {
             body: formData,
         });
     } catch (error) {
-        console.error('Error analyzing room:', error);
+        logger.error({ error }, 'Error analyzing room');
         throw error;
     }
 };
@@ -85,7 +85,7 @@ export const getHistory = async () => {
     try {
         return await apiService(API_ENDPOINTS.HISTORY);
     } catch (error) {
-        console.error('Error fetching history:', error);
+        logger.error({ error }, 'Error fetching history');
         throw error;
     }
 };

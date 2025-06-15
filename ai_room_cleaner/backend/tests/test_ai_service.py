@@ -19,12 +19,22 @@ def mock_settings(monkeypatch):
     settings = Settings(
         AI_PROVIDER="openai",
         AI_MODEL="gpt-4-turbo",
+        AI_API_ENDPOINT=None,
+        AI_API_KEY=SecretStr("fake_key"),
         OPENAI_API_KEY=SecretStr("fake_key"),
         GOOGLE_API_KEY=SecretStr("fake_key"),
+        history_file_path="/data/history.json",
+        camera_entity="camera.test",
+        api_key=SecretStr("fake_key"),
+        supervisor_url=None,
+        cors_allowed_origins=["http://localhost:8080"],
+        vips_cache_max=100,
+        high_risk_dimension_threshold=4096,
         LOG_LEVEL="DEBUG",
         MAX_IMAGE_SIZE_MB=1,
         MAX_IMAGE_DIMENSION=1024,
-        AI_PROMPT="Analyze this image."
+        AI_PROMPT="Analyze this image.",
+        MAX_REQUEST_SIZE_MB=10
     )
     monkeypatch.setattr("backend.core.config.get_settings", lambda: settings)
     return settings
@@ -48,12 +58,12 @@ def ai_service(mock_settings, mock_ai_provider):
 async def test_analyze_room_for_mess_success(ai_service, mock_ai_provider):
     """Test successful room analysis delegates to the AI provider."""
     test_image = base64.b64encode(b"fake_image_data").decode()
-    
-    with patch('backend.services.ai_service.resize_image_with_vips', return_value=b"resized_data") as mock_resize:
+
+    with patch.object(ai_service, '_process_image', new_callable=AsyncMock, return_value=test_image) as mock_process_image:
         result = await ai_service.analyze_room_for_mess(test_image)
-        
+
         assert result == [{"mess": "test mess", "reason": "test reason"}]
-        mock_resize.assert_called_once()
+        mock_process_image.assert_called_once_with(b"fake_image_data")
         mock_ai_provider.analyze_image.assert_called_once()
 
 @pytest.mark.asyncio

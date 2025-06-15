@@ -34,3 +34,18 @@ class InvalidFileTypeError(AppException):
     """Exception raised for invalid file types."""
     def __init__(self, detail: str = "Invalid file type."):
         super().__init__(status_code=400, detail=detail)
+
+class InvalidAPIKeyError(AppException):
+    """Exception raised for invalid API keys."""
+    def __init__(self, detail: str = "Invalid API key."):
+        super().__init__(status_code=401, detail=detail)
+
+class RateLimitError(AppException):
+    """Exception raised when rate limits are exceeded."""
+    def __init__(self, detail: str = "Rate limit exceeded."):
+        super().__init__(status_code=429, detail=detail)
+
+class APIResponseError(AppException):
+    """Exception raised for errors in the API response."""
+    def __init__(self, detail: str = "Error in API response."):
+        super().__init__(status_code=500, detail=detail)

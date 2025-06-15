@@ -1,0 +1,36 @@
+import sys
+import json
+from loguru import logger
+from fastapi import Request
+import uuid
+
+def setup_logging():
+    """
+    Set up structured logging for the application.
+    """
+    logger.remove()
+
+    # Console logger
+    logger.add(
+        sys.stdout,
+        level="INFO",
+        format="{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {extra[request_id]} | {name}:{function}:{line} - {message}",
+        colorize=True,
+    )
+
+    # File logger (JSON format)
+    logger.add(
+        "logs/app.log",
+        level="DEBUG",
+        format="{message}",
+        serialize=True,
+        rotation="100 MB",
+        retention="30 days",
+    )
+
+class LoggingMiddleware:
+    async def __call__(self, request: Request, call_next):
+        request_id = str(uuid.uuid4())
+        with logger.contextualize(request_id=request_id):
+            response = await call_next(request)
+            return response

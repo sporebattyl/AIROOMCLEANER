@@ -1,6 +1,15 @@
+import sys
+from unittest.mock import MagicMock
+
+# Mock the 'magic' library at the module level before any tests are collected.
+# This prevents ImportError if the underlying libmagic C library is not installed.
+mock_magic = MagicMock()
+mock_magic.from_buffer.return_value = "image/jpeg"
+sys.modules['magic'] = mock_magic
+
 import pytest
 import asyncio
-from unittest.mock import MagicMock, AsyncMock, patch
+from unittest.mock import AsyncMock, patch
 from backend.core.config import Settings
 from backend.services.ai_service import AIService
 from backend.core.state import State
@@ -36,7 +45,10 @@ def mock_settings():
 def ai_service(mock_settings):
     """Create AI service instance for testing."""
     with patch('backend.services.ai_service.genai'), \
-         patch('backend.services.ai_service.configure_pyvips'):
+         patch('backend.services.ai_service.configure_pyvips'), \
+         patch('backend.services.ai_service.AIService._validate_image', return_value=None), \
+         patch('backend.services.ai_service.AIService._process_image', return_value="mocked_image_data"), \
+         patch('backend.services.ai_service.AIService._get_image_from_ha', new_callable=AsyncMock, return_value="mocked_ha_image_data"):
         service = AIService(mock_settings)
         return service
 

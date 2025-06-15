@@ -6,27 +6,21 @@ const handleUnhandledRejection = (event) => {
 
 window.addEventListener('unhandledrejection', handleUnhandledRejection);
 
-import { initializeUIElements } from './modules/ui.js';
+import { initializeUIElements as initializeUIStateElements } from './modules/state.js';
 import {
     setCurrentTheme,
-    elements,
+    getUIElements,
     storage
 } from './modules/state.js';
 import {
     setupEventListeners,
     loadHistory,
-    debouncedHandleAnalyzeRoom,
-    handleToggleTheme,
-    handleClearHistory,
-    handleToggleTask
+    cleanupEventListeners
 } from './modules/eventHandlers.js';
 
 const setupUI = async () => {
-    initializeUIElements();
-    elements.analyzeBtn = document.getElementById('analyze-btn');
-    elements.themeToggleBtn = document.getElementById('theme-toggle-btn');
-    elements.clearHistoryBtn = document.getElementById('clear-history-btn');
-    elements.messesList = document.getElementById('messes-list');
+    initializeUIStateElements();
+    const elements = getUIElements();
 
     // Disable clear history button as there is no backend endpoint for it yet.
     elements.clearHistoryBtn.disabled = true;
@@ -44,27 +38,11 @@ const initializeApp = async () => {
     setupEventListeners();
 };
 
-document.addEventListener('DOMContentLoaded', initializeApp);
-
-export const cleanup = () => {
-    // Remove all event listeners to prevent memory leaks
+const cleanup = () => {
     window.removeEventListener('unhandledrejection', handleUnhandledRejection);
     document.removeEventListener('DOMContentLoaded', initializeApp);
-    window.removeEventListener('beforeunload', cleanup);
-
-    if (elements.analyzeBtn) {
-        elements.analyzeBtn.removeEventListener('click', debouncedHandleAnalyzeRoom);
-    }
-    if (elements.themeToggleBtn) {
-        elements.themeToggleBtn.removeEventListener('click', handleToggleTheme);
-    }
-    if (elements.clearHistoryBtn) {
-        elements.clearHistoryBtn.removeEventListener('click', handleClearHistory);
-    }
-    if (elements.messesList) {
-        elements.messesList.removeEventListener('click', handleToggleTask);
-    }
+    cleanupEventListeners();
 };
 
-// Call cleanup when page unloads
+document.addEventListener('DOMContentLoaded', initializeApp);
 window.addEventListener('beforeunload', cleanup);

@@ -4,7 +4,7 @@ from loguru import logger
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File, Security
 from fastapi.responses import JSONResponse
-from fastapi.concurrency import run_in_executor
+import anyio
 from fastapi.security import APIKeyHeader
 from slowapi import Limiter
 from slowapi.util import get_remote_address
@@ -91,12 +91,12 @@ async def analyze_room_secure(
     This endpoint avoids loading the entire file into memory.
     """
     logger.info("Received request for secure room analysis")
-    ai_service: AIService = request.app.state.state.ai_service
+    ai_service: AIService = request.app.state.ai_service
 
     # Validate image type by reading a small chunk, not the whole file
     chunk = await file.read(2048)
     await file.seek(0)  # Reset file pointer for the service to read from the start
-    mime_type = await run_in_executor(None, lambda: magic.from_buffer(chunk, mime=True))
+    mime_type = await anyio.to_thread.run_sync(lambda: magic.from_buffer(chunk, mime=True))
     if mime_type not in ALLOWED_MIME_TYPES:
         raise InvalidFileTypeError(
             f"Invalid file type: {mime_type}. Allowed types are: {', '.join(ALLOWED_MIME_TYPES)}"

@@ -1,6 +1,9 @@
+import logger from './logger.js';
+
 let uiElements = {};
 
 export const initializeUIElements = () => {
+    logger.info('Initializing UI elements');
     uiElements = {
         messesList: document.getElementById('messes-list'),
         tasksCount: document.getElementById('tasks-count'),
@@ -39,6 +42,7 @@ export const updateStatus = (message, isError = false) => {
 };
 
 export const updateMessesList = (tasks) => {
+    logger.info({ taskCount: tasks.length }, 'Updating messes list');
     if (tasks.length === 0) {
         showEmptyState();
         return;
@@ -71,6 +75,7 @@ export const showEmptyState = () => {
 };
 
 export const updateCleanlinessScore = (score) => {
+    logger.info({ score }, 'Updating cleanliness score');
     const scoreEl = uiElements.cleanlinessScore;
     scoreEl.textContent = `${score}%`;
 
@@ -103,10 +108,9 @@ export const showError = (error, retryCallback = null) => {
         errorMessage = error;
     } else if (error instanceof Error) {
         errorMessage = error.message;
-        if (error.response && error.response.data && error.response.data.detail) {
-            errorMessage = error.response.data.detail;
-        }
     }
+    
+    logger.error({ error: errorMessage, retry: !!retryCallback }, 'Displaying error');
     
     const fragment = document.createDocumentFragment();
     const errorSpan = document.createElement('span');

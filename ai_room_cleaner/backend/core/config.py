@@ -50,6 +50,6 @@ def get_settings() -> Settings:
     The lru_cache decorator ensures that the Settings object is only created once,
     improving performance by avoiding repeated file reads and object initializations.
     """
-    return Settings.model_validate({})
+    return Settings()
 
 settings = get_settings()

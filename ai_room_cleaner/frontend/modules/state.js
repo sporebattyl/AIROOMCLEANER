@@ -98,6 +98,10 @@ export const ERROR_MESSAGES = {
 const appState = {
     history: [],
     currentTheme: 'light', // Default theme
+    ui: {
+        // Populated by initializeUIElements
+        elements: {}
+    }
 };
 
 // --- Getters ---
@@ -116,6 +120,14 @@ export function getHistory() {
  */
 export function getCurrentTheme() {
     return appState.currentTheme;
+}
+
+/**
+ * Gets the UI elements.
+ * @returns {object} The UI elements.
+ */
+export function getUIElements() {
+    return appState.ui.elements;
 }
 
 
@@ -162,4 +174,16 @@ export function setCurrentTheme(newTheme) {
     }
 }
 
-export const elements = {};
+/**
+ * Initializes the UI elements and stores them in the state.
+ */
+export function initializeUIElements() {
+    appState.ui.elements = {
+        analyzeBtn: document.getElementById('analyze-btn'),
+        themeToggleBtn: document.getElementById('theme-toggle-btn'),
+        clearHistoryBtn: document.getElementById('clear-history-btn'),
+        messesList: document.getElementById('messes-list'),
+        fileInput: document.getElementById('file-input'),
+        // Add other elements here
+    };
+}

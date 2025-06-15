@@ -8,20 +8,24 @@ import asyncio
 import base64
 import tempfile
 import shutil
+import os
 from loguru import logger
 from typing import List, Dict, Any
 import bleach
 from fastapi import UploadFile
+from werkzeug.utils import secure_filename
 
 from backend.core.config import Settings
 from backend.core.exceptions import (
     AIError,
     ConfigError,
     ImageProcessingError,
-    AIProviderError
+    AIProviderError,
+    InvalidFileTypeError
 )
 from backend.utils.image_processing import resize_image_with_vips, configure_pyvips
 from .ai_providers import get_ai_provider, AIProvider
+from backend.api.constants import ALLOWED_MIME_TYPES
 
 
 class AIService:
@@ -87,11 +91,25 @@ class AIService:
         Analyzes an image from an UploadFile by streaming it to a temporary file.
         This avoids loading the entire file into memory.
         """
+        max_size = self.settings.MAX_IMAGE_SIZE_MB * 1024 * 1024
+        
+        # Read the file content into memory to check size, this is not ideal for very large files
+        # but a necessary trade-off for security. A streaming validator would be better.
+        contents = await upload_file.read()
+        if len(contents) > max_size:
+            raise AIError(f"Image size ({len(contents)} bytes) exceeds maximum of {self.settings.MAX_IMAGE_SIZE_MB}MB.")
+        
+        if not upload_file.filename:
+            raise AIError("Filename not provided in upload.")
+
         temp_dir = tempfile.mkdtemp()
-        temp_path = f"{temp_dir}/{upload_file.filename}"
+        # Sanitize the filename to prevent path traversal attacks
+        safe_filename = secure_filename(upload_file.filename)
+        temp_path = os.path.join(temp_dir, safe_filename)
+
         try:
             with open(temp_path, "wb") as buffer:
-                shutil.copyfileobj(upload_file.file, buffer)
+                buffer.write(contents)
 
             with open(temp_path, "rb") as f:
                 image_bytes = f.read()
@@ -99,8 +117,12 @@ class AIService:
             # Now that we have the bytes, we can proceed with existing logic
             resized_image_bytes = self._process_image(image_bytes)
             sanitized_prompt = self._sanitize_prompt(self.settings.AI_PROMPT)
+            if not upload_file.content_type:
+                raise AIError("Content-Type header is missing.")
+            if upload_file.content_type not in ALLOWED_MIME_TYPES:
+                raise InvalidFileTypeError(f"Invalid file type: {upload_file.content_type}")
             return await self.ai_provider.analyze_image(
-                resized_image_bytes, sanitized_prompt
+                resized_image_bytes, sanitized_prompt, upload_file.content_type
             )
         finally:
             shutil.rmtree(temp_dir)

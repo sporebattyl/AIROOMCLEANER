@@ -2,7 +2,6 @@ import os
 import httpx
 from contextlib import asynccontextmanager
 from loguru import logger
-import sys
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -12,67 +11,25 @@ from slowapi.errors import RateLimitExceeded
 from backend.core.config import get_settings
 from backend.api.router import router as api_router, limiter as api_limiter
 from backend.core.exceptions import AppException
-from backend.core.state import State
 from backend.services.ai_service import AIService
-
+from backend.core.logging import setup_logging, LoggingMiddleware
 import time
-from loguru import logger
-from fastapi import Request, Response
-import json
-from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
+from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
 
-# Enhanced logging configuration
-def configure_logging():
-    """Configure structured logging with proper levels and formatting."""
-    logger.remove()
-    
-    # Console logging with structured format
-    logger.add(
-        sys.stderr,
-        format="{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {name}:{function}:{line} | {message}",
-        level="INFO",
-        serialize=False,
-        backtrace=True,
-        diagnose=True
-    )
-    
-    # File logging for production
-    logger.add(
-        "logs/app.log",
-        format="{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {name}:{function}:{line} | {message}",
-        level="DEBUG",
-        rotation="100 MB",
-        retention="30 days",
-        serialize=False
-    )
-    
-    # JSON logging for structured log analysis
-    logger.add(
-        "logs/app.json",
-        format=lambda record: json.dumps({
-            "timestamp": record["time"].isoformat(),
-            "level": record["level"].name,
-            "module": record["name"],
-            "function": record["function"],
-            "line": record["line"],
-            "message": record["message"]
-        }) + "\n",
-        level="INFO",
-        rotation="100 MB",
-        retention="30 days"
-    )
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Manage application startup and shutdown events."""
+    setup_logging()
     logger.info("--- AI Room Cleaner Starting Up ---")
     
     # Initialize services and state
     try:
         settings = get_settings()
         ai_service = AIService(settings)
-        app.state.state = State(ai_service=ai_service, settings=settings)
+        app.state.ai_service = ai_service
+        app.state.settings = settings
         app.state.limiter = api_limiter
         logger.info("AI service and application state initialized.")
         
@@ -155,6 +112,7 @@ app.add_middleware(
     allow_methods=["GET", "POST"],
     allow_headers=["Content-Type", "Authorization"],
 )
+app.add_middleware(LoggingMiddleware)
 
 # Middleware to limit request body size
 class RequestSizeLimitMiddleware(BaseHTTPMiddleware):
@@ -162,7 +120,7 @@ class RequestSizeLimitMiddleware(BaseHTTPMiddleware):
         super().__init__(app)
         self.max_size = max_size
 
-    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint):
+    async def dispatch(self, request: Request, call_next):
         if "content-length" not in request.headers:
             return JSONResponse(status_code=411, content={"detail": "Content-Length required"})
         
@@ -178,7 +136,7 @@ app.add_middleware(RequestSizeLimitMiddleware, max_size=max_size)
 
 
 # Include the API router
-app.include_router(api_router, prefix="/api")
+app.include_router(api_router)
 
 # Mount the frontend directory
 frontend_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "frontend"))
@@ -187,59 +145,6 @@ if os.path.exists(frontend_dir):
     logger.info(f"Mounted frontend directory: {frontend_dir}")
 else:
     logger.error(f"Frontend directory not found at: {frontend_dir}")
-
-# Add middleware to log all requests for debugging
-# Performance monitoring middleware
-@app.middleware("http")
-async def performance_monitoring_middleware(request: Request, call_next):
-    """Monitor request performance and log detailed metrics."""
-    start_time = time.time()
-    
-    # Log request details
-    logger.info(
-        f"Request started: {request.method} {request.url.path}",
-        extra={
-            "method": request.method,
-            "path": request.url.path,
-            "query_params": str(request.query_params),
-            "client_ip": request.client.host if request.client else "unknown"
-        }
-    )
-    
-    try:
-        response = await call_next(request)
-        process_time = time.time() - start_time
-        
-        # Log response details
-        logger.info(
-            f"Request completed: {request.method} {request.url.path} - "
-            f"Status: {response.status_code} - Time: {process_time:.3f}s",
-            extra={
-                "method": request.method,
-                "path": request.url.path,
-                "status_code": response.status_code,
-                "process_time": process_time
-            }
-        )
-        
-        # Add response time header
-        response.headers["X-Process-Time"] = str(process_time)
-        return response
-        
-    except Exception as e:
-        process_time = time.time() - start_time
-        logger.error(
-            f"Request failed: {request.method} {request.url.path} - "
-            f"Error: {str(e)} - Time: {process_time:.3f}s",
-            extra={
-                "method": request.method,
-                "path": request.url.path,
-                "error": str(e),
-                "process_time": process_time
-            },
-            exc_info=True
-        )
-        raise
 
 if __name__ == "__main__":
     import uvicorn

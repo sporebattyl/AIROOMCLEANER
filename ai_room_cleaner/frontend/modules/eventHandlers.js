@@ -16,19 +16,26 @@ import {
     setHistory,
     getCurrentTheme,
     setCurrentTheme,
-    elements,
+    getUIElements,
     storage
 } from './state.js';
+import logger from './logger.js';
+
+// Create a single AbortController for all event listeners
+const controller = new AbortController();
 
 // Fetches and displays the analysis history from the server.
 export const loadHistory = async () => {
     showHistoryLoading();
     try {
+        logger.info('Loading history...');
         const historyData = await fetchHistoryFromServer();
         setHistory(historyData);
         updateHistoryList(getHistoryFromState());
+        logger.info('History loaded successfully.');
     } catch (error) {
         hideHistoryLoading();
+        logger.error({ error }, 'Error loading history');
         if (error instanceof ServerError) {
             showError(`Server error: ${error.message}`);
         } else if (error instanceof NetworkError) {
@@ -36,12 +43,14 @@ export const loadHistory = async () => {
         } else {
             showError("An unexpected error occurred while loading history.");
         }
+    } finally {
+        hideHistoryLoading();
     }
 };
 
 // Handles the room analysis process, including UI updates and error handling.
 export const handleAnalyzeRoom = async () => {
-    const { fileInput, messesList } = elements;
+    const { fileInput, messesList } = getUIElements();
     const imageFile = fileInput.files[0];
 
     if (!imageFile) {
@@ -53,8 +62,9 @@ export const handleAnalyzeRoom = async () => {
     clearError();
 
     try {
+        logger.info({ filename: imageFile.name, size: imageFile.size }, 'Analyzing room...');
         const result = await analyzeRoom(imageFile);
-        console.log('Analysis result:', result);
+        logger.info({ result }, 'Analysis successful');
 
         updateMessesList(result.tasks, messesList);
         updateCleanlinessScore(result.cleanliness_score || 0);
@@ -62,10 +72,8 @@ export const handleAnalyzeRoom = async () => {
         
         // Reload history from server to ensure consistency
         await loadHistory();
-        hideLoading();
     } catch (error) {
-        console.error('Analysis error:', error);
-        hideLoading();
+        logger.error({ error }, 'Analysis error');
         if (error instanceof ServerError) {
             showError(`Server error: ${error.message}`, handleAnalyzeRoom);
         } else if (error instanceof NetworkError) {
@@ -73,21 +81,25 @@ export const handleAnalyzeRoom = async () => {
         } else {
             showError('An unexpected error occurred during analysis.', handleAnalyzeRoom);
         }
+    } finally {
+        hideLoading();
     }
 };
 
 export const handleClearHistory = () => {
     // This function is currently disabled.
     // To re-enable, a backend endpoint to clear the history is needed.
-    console.warn("Clear history is disabled.");
+    logger.warn("Clear history is disabled.");
 };
 
 // Toggles the theme between light and dark mode.
 export const handleToggleTheme = () => {
-    const newTheme = getCurrentTheme() === 'dark' ? 'light' : 'dark';
+    const oldTheme = getCurrentTheme();
+    const newTheme = oldTheme === 'dark' ? 'light' : 'dark';
     setCurrentTheme(newTheme);
     document.documentElement.setAttribute('data-theme', newTheme);
     storage.set('theme', newTheme);
+    logger.info({ from: oldTheme, to: newTheme }, 'Theme toggled');
 };
 
 export const handleToggleTask = (e) => {
@@ -111,8 +123,15 @@ export const debouncedHandleAnalyzeRoom = debounce(handleAnalyzeRoom, 500);
 
 // Sets up all the event listeners for the application.
 export const setupEventListeners = () => {
-    elements.analyzeBtn.addEventListener('click', debouncedHandleAnalyzeRoom);
-    elements.themeToggleBtn.addEventListener('click', handleToggleTheme);
-    elements.clearHistoryBtn.addEventListener('click', handleClearHistory);
-    elements.messesList.addEventListener('click', handleToggleTask);
+    const { signal } = controller;
+    const elements = getUIElements();
+    elements.analyzeBtn.addEventListener('click', debouncedHandleAnalyzeRoom, { signal });
+    elements.themeToggleBtn.addEventListener('click', handleToggleTheme, { signal });
+    elements.clearHistoryBtn.addEventListener('click', handleClearHistory, { signal });
+    elements.messesList.addEventListener('click', handleToggleTask, { signal });
+};
+
+// Removes all event listeners.
+export const cleanupEventListeners = () => {
+    controller.abort();
 };

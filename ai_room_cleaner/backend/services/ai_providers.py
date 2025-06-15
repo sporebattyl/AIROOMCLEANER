@@ -16,9 +16,11 @@ from loguru import logger
 
 try:
     import google.generativeai as genai
+    from google.api_core import exceptions as google_exceptions
     GOOGLE_AVAILABLE = True
 except ImportError:
     genai = None
+    google_exceptions = None
     GOOGLE_AVAILABLE = False
 
 try:
@@ -44,7 +46,7 @@ class AIProvider(ABC):
         self.settings = settings
 
     @abstractmethod
-    async def analyze_image(self, image_data: bytes, prompt: str) -> List[Dict[str, Any]]:
+    async def analyze_image(self, image_data: bytes, prompt: str, mime_type: str = "image/jpeg") -> List[Dict[str, Any]]:
         """Analyzes an image and returns a list of tasks."""
         pass
 
@@ -99,7 +101,7 @@ class OpenAIProvider(AIProvider):
             raise ConfigError("OpenAI API key is not configured.")
         self.client = openai.AsyncOpenAI(api_key=self.settings.OPENAI_API_KEY.get_secret_value())
 
-    async def analyze_image(self, image_data: bytes, prompt: str) -> List[Dict[str, Any]]:
+    async def analyze_image(self, image_data: bytes, prompt: str, mime_type: str = "image/jpeg") -> List[Dict[str, Any]]:
         if not self.client:
             raise ConfigError("OpenAI client not initialized.")
         image_base64 = base64.b64encode(image_data).decode('utf-8')
@@ -111,7 +113,7 @@ class OpenAIProvider(AIProvider):
                         "role": "user",
                         "content": [
                             {"type": "text", "text": prompt},
-                            {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_base64}"}}
+                            {"type": "image_url", "image_url": {"url": f"data:{mime_type};base64,{image_base64}"}}
                         ]
                     }
                 ],
@@ -143,11 +145,11 @@ class GoogleGeminiProvider(AIProvider):
         genai.configure(api_key=self.settings.GOOGLE_API_KEY.get_secret_value())
         self.client = genai.GenerativeModel(self.settings.AI_MODEL)
 
-    async def analyze_image(self, image_data: bytes, prompt: str) -> List[Dict[str, Any]]:
+    async def analyze_image(self, image_data: bytes, prompt: str, mime_type: str = "image/jpeg") -> List[Dict[str, Any]]:
         if not self.client:
             raise ConfigError("Gemini client not initialized.")
         try:
-            image_parts = [{"mime_type": "image/jpeg", "data": image_data}]
+            image_parts = {"mime_type": mime_type, "data": image_data}
             response = await self.client.generate_content_async([prompt, image_parts])
             if not response.parts:
                 if response.prompt_feedback and response.prompt_feedback.block_reason:
@@ -162,6 +164,9 @@ class GoogleGeminiProvider(AIProvider):
                 raise AIError("Gemini returned a response with no text content.")
             logger.info(f"Raw Gemini response: {text_content}")
             return self._parse_ai_response(text_content)
+        except (google_exceptions.PermissionDenied, google_exceptions.Unauthenticated) as e:
+            logger.error(f"Google API authentication error: {e}", exc_info=True)
+            raise InvalidAPIKeyError("Google API key is invalid or has insufficient permissions.") from e
         except Exception as e:
             logger.error(f"Error with Gemini analysis: {e}", exc_info=True)
             raise AIProviderError("Failed to analyze image with Gemini.") from e
