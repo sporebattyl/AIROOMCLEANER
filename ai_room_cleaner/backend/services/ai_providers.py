@@ -8,7 +8,6 @@ It includes:
 """
 import base64
 from abc import ABC, abstractmethod
-import base64
 import json
 import re
 from typing import List, Dict, Any
@@ -48,6 +47,11 @@ class AIProvider(ABC):
     @abstractmethod
     async def analyze_image(self, image_data: bytes, prompt: str, mime_type: str = "image/jpeg") -> List[Dict[str, Any]]:
         """Analyzes an image and returns a list of tasks."""
+        pass
+
+    @abstractmethod
+    async def health_check(self) -> bool:
+        """Performs a live health check against the provider's API."""
         pass
 
     def _parse_ai_response(self, text_content: str) -> List[Dict[str, Any]]:
@@ -117,7 +121,7 @@ class OpenAIProvider(AIProvider):
                         ]
                     }
                 ],
-                max_tokens=1000
+                max_tokens=self.settings.OPENAI_MAX_TOKENS
             )
             text_content = response.choices[0].message.content
             if not text_content:
@@ -132,6 +136,16 @@ class OpenAIProvider(AIProvider):
             
             logger.error(f"Error with OpenAI analysis: {e}", exc_info=True)
             raise AIProviderError("Failed to analyze image with OpenAI.") from e
+
+    async def health_check(self) -> bool:
+        """Performs a live health check against the OpenAI API."""
+        try:
+            await self.client.models.list()
+            logger.info("OpenAI health check successful.")
+            return True
+        except Exception as e:
+            logger.error(f"OpenAI health check failed: {e}")
+            return False
 
 class GoogleGeminiProvider(AIProvider):
     """AI Provider implementation for Google's Gemini models."""
@@ -170,6 +184,15 @@ class GoogleGeminiProvider(AIProvider):
         except Exception as e:
             logger.error(f"Error with Gemini analysis: {e}", exc_info=True)
             raise AIProviderError("Failed to analyze image with Gemini.") from e
+
+    async def health_check(self) -> bool:
+        """Performs a health check for the Google Gemini provider."""
+        is_healthy = self.client is not None
+        if is_healthy:
+            logger.info("Google Gemini health check successful.")
+        else:
+            logger.error("Google Gemini health check failed: client not initialized.")
+        return is_healthy
 
 def get_ai_provider(provider_name: str, settings: Settings) -> AIProvider:
     """Factory function to get an AI provider instance."""

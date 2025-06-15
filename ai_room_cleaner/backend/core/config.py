@@ -21,6 +21,7 @@ class Settings(BaseSettings):
     
     OPENAI_API_KEY: Optional[SecretStr] = Field(None, description="The API key for OpenAI.")
     GOOGLE_API_KEY: Optional[SecretStr] = Field(None, description="The API key for Google Gemini.")
+    OPENAI_MAX_TOKENS: int = Field(1000, description="The maximum number of tokens for OpenAI API calls.")
 
     history_file_path: str = Field("/data/history.json", description="The path to the history file.")
     camera_entity: Optional[str] = Field(None, description="The camera entity to use for taking pictures.")

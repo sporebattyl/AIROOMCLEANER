@@ -44,13 +44,11 @@ class AIService:
 
     async def health_check(self) -> Dict[str, Any]:
         """Performs a health check on the configured AI service."""
-        # The health check logic is now delegated to the provider implementation.
-        # For simplicity, we'll just check if the provider is initialized.
-        # A more thorough health check would involve making a test call to the AI API.
-        if self.ai_provider:
+        is_healthy = await self.ai_provider.health_check()
+        if is_healthy:
             return {"status": "ok", "provider": self.settings.AI_PROVIDER}
         else:
-            return {"status": "error", "error": "AI provider not initialized."}
+            return {"status": "error", "provider": self.settings.AI_PROVIDER, "details": "Failed to connect to AI provider."}
 
     async def analyze_room_for_mess(self, image_base64: str) -> List[Dict[str, Any]]:
         """
@@ -84,43 +82,34 @@ class AIService:
             logger.error(f"An unexpected error occurred in room analysis: {e}", exc_info=True)
             raise AIError(f"An unexpected error occurred during analysis: {str(e)}")
 
-    async def analyze_image_from_upload(
-        self, upload_file: UploadFile
-    ) -> List[Dict[str, Any]]:
+    async def analyze_image_from_upload(self, upload_file: UploadFile) -> List[Dict[str, Any]]:
         """
-        Analyzes an image from an UploadFile by streaming it to a temporary file.
-        This avoids loading the entire file into memory.
+        Analyzes an image from an UploadFile by securely streaming it to a temporary file.
         """
-        max_size = self.settings.MAX_IMAGE_SIZE_MB * 1024 * 1024
-        
-        # Read the file content into memory to check size, this is not ideal for very large files
-        # but a necessary trade-off for security. A streaming validator would be better.
-        contents = await upload_file.read()
-        if len(contents) > max_size:
-            raise AIError(f"Image size ({len(contents)} bytes) exceeds maximum of {self.settings.MAX_IMAGE_SIZE_MB}MB.")
-        
         if not upload_file.filename:
             raise AIError("Filename not provided in upload.")
+        if upload_file.content_type not in ALLOWED_MIME_TYPES:
+            raise InvalidFileTypeError(f"Invalid file type: {upload_file.content_type}")
 
-        temp_dir = tempfile.mkdtemp()
-        # Sanitize the filename to prevent path traversal attacks
         safe_filename = secure_filename(upload_file.filename)
+        temp_dir = tempfile.mkdtemp()
         temp_path = os.path.join(temp_dir, safe_filename)
+        max_size = self.settings.MAX_IMAGE_SIZE_MB * 1024 * 1024
+        current_size = 0
 
         try:
             with open(temp_path, "wb") as buffer:
-                buffer.write(contents)
+                while chunk := await upload_file.read(8192): # Read in 8KB chunks
+                    current_size += len(chunk)
+                    if current_size > max_size:
+                        raise AIError(f"Image size exceeds maximum of {self.settings.MAX_IMAGE_SIZE_MB}MB.")
+                    buffer.write(chunk)
 
             with open(temp_path, "rb") as f:
                 image_bytes = f.read()
 
-            # Now that we have the bytes, we can proceed with existing logic
             resized_image_bytes = self._process_image(image_bytes)
             sanitized_prompt = self._sanitize_prompt(self.settings.AI_PROMPT)
-            if not upload_file.content_type:
-                raise AIError("Content-Type header is missing.")
-            if upload_file.content_type not in ALLOWED_MIME_TYPES:
-                raise InvalidFileTypeError(f"Invalid file type: {upload_file.content_type}")
             return await self.ai_provider.analyze_image(
                 resized_image_bytes, sanitized_prompt, upload_file.content_type
             )
