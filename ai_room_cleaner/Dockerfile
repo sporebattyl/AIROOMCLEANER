@@ -1,5 +1,5 @@
 # Stage 1: Build stage for Python dependencies
-FROM python:3.12-slim-bookworm AS python-builder
+FROM python:3.13-slim-bookworm AS python-builder
 
 # Set the working directory
 WORKDIR /app
@@ -9,16 +9,18 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy only the requirements file to leverage Docker cache
-COPY requirements.txt .
+# Copy poetry lock and pyproject to leverage Docker cache
+COPY poetry.lock pyproject.toml ./
 
-# Install Python dependencies
+# Install poetry and dependencies
 RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt
+    pip install --no-cache-dir poetry && \
+    poetry config virtualenvs.create false && \
+    poetry install --no-dev --no-interaction --no-ansi
 
 
 # Stage 2: Final production stage
-FROM python:3.12-slim-bookworm
+FROM python:3.13-slim-bookworm
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
@@ -33,7 +35,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy installed Python dependencies from the builder stage
-COPY --from=python-builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
+COPY --from=python-builder /usr/local/lib/python3.13/site-packages /usr/local/lib/python3.13/site-packages
 COPY --from=python-builder /usr/local/bin /usr/local/bin
 
 # Copy the application code
