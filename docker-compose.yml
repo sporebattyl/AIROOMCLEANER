@@ -1,14 +1,13 @@
 version: '3.8'
 services:
   ai-room-cleaner:
-    build: .
+    build:
+      context: ./ai_room_cleaner
+      dockerfile: Dockerfile
     ports:
       - "8000:8000"
-    environment:
-      - CAMERA_ENTITY_ID=${CAMERA_ENTITY_ID}
-      - SUPERVISOR_TOKEN=${SUPERVISOR_TOKEN}
-      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
-      - AI_MODEL=${AI_MODEL:-gemini-1.5-pro-latest}
+    env_file:
+      - ./ai_room_cleaner/.env
     volumes:
       - ./data:/app/data
       - ./logs:/app/logs

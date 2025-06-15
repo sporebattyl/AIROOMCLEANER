@@ -11,13 +11,14 @@ class AppSettings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
-        extra="ignore"
+        extra="ignore",
+        case_sensitive=False
     )
 
     AI_PROVIDER: str = Field("openai", description="The AI provider to use ('openai' or 'google').")
     AI_MODEL: str = Field("gpt-4-turbo", description="The specific AI model to use.")
     AI_API_ENDPOINT: Optional[str] = Field(None, description="The API endpoint for the AI service.")
-    ai_api_key: SecretStr = Field(..., description="The API key for the AI service.")
+    ai_api_key: SecretStr = Field(..., validation_alias="AI_API_KEY", description="The API key for the AI service.")
     OPENAI_MAX_TOKENS: int = Field(1000, description="The maximum number of tokens for OpenAI API calls.")
 
     history_file_path: str = Field("/data/history.json", description="The path to the history file.")

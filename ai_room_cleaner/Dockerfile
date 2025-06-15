@@ -32,6 +32,9 @@ WORKDIR /app
 # Install runtime dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
+    libmagic1 \
+    libvips-dev \
+    libvips-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy installed Python dependencies from the builder stage
@@ -44,12 +47,18 @@ COPY . .
 # Ensure the run script is executable
 RUN chmod +x /app/run.sh
 
+# Install debugpy for remote debugging
+RUN pip install debugpy
+
 # Expose the port the app runs on
 EXPOSE 8000
+
+# Expose the debug port
+EXPOSE 5678
 
 # Add a health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
   CMD curl -f http://localhost:8000/api/health || exit 1
 
-# Define the command to run the application
-CMD ["/app/run.sh"]
+# Define the command to run the application with the debugger
+CMD ["python", "-m", "debugpy", "--listen", "0.0.0.0:5678", "-m", "backend.main"]
