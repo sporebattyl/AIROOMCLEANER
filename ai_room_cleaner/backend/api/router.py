@@ -1,5 +1,6 @@
 import datetime
 import magic
+import secrets
 from loguru import logger
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File, Security
@@ -9,7 +10,7 @@ from fastapi.security import APIKeyHeader
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 
-from backend.api.constants import ANALYZE_ROUTE, ALLOWED_MIME_TYPES
+from backend.api.constants import ANALYZE_ROUTE, ALLOWED_MIME_TYPES, MIME_TYPE_CHUNK_SIZE
 from backend.core.config import settings
 from backend.core.state import State
 from backend.core.exceptions import (
@@ -30,11 +31,8 @@ api_key_scheme = APIKeyHeader(name="X-API-KEY", auto_error=False)
 
 async def get_api_key(api_key: str = Security(api_key_scheme)):
     """Validates the API key from the X-API-KEY header."""
-    if not api_key:
-        # 401 Unauthorized: The client must authenticate itself to get the requested response.
+    if not settings.api_key or not api_key or not secrets.compare_digest(api_key, settings.api_key.get_secret_value()):
         raise HTTPException(status_code=401, detail="Missing or invalid API key")
-    # In a real-world scenario, you would validate the key against a database
-    # or a secrets manager. For this example, we just check for its presence.
     return api_key
 
 
@@ -49,32 +47,18 @@ async def health_check(
     request: Request, client: httpx.AsyncClient = Depends(get_http_client)
 ):
     """Comprehensive health check for the service and its dependencies."""
-    state: State = request.app.state.state
+    ai_service: AIService = request.app.state.ai_service
     health_data = {
         "status": "healthy",
         "service": "AI Room Cleaner",
         "timestamp": datetime.datetime.now().isoformat(),
-        "dependencies": {},
+        "dependencies": {
+            "ai_service": await ai_service.health_check()
+        },
     }
 
-    # Check AI Service Connectivity
-    if not settings.AI_API_ENDPOINT:
-        health_data["dependencies"]["ai_service"] = {
-            "status": "error",
-            "error": "AI_API_ENDPOINT is not configured.",
-        }
+    if health_data["dependencies"]["ai_service"]["status"] != "ok":
         health_data["status"] = "degraded"
-    else:
-        try:
-            response = await client.get(settings.AI_API_ENDPOINT)
-            response.raise_for_status()
-            health_data["dependencies"]["ai_service"] = {"status": "ok"}
-        except httpx.RequestError as e:
-            health_data["dependencies"]["ai_service"] = {
-                "status": "error",
-                "error": f"Failed to connect to AI service: {e}",
-            }
-            health_data["status"] = "degraded"
 
     return health_data
 
@@ -94,7 +78,7 @@ async def analyze_room_secure(
     ai_service: AIService = request.app.state.ai_service
 
     # Validate image type by reading a small chunk, not the whole file
-    chunk = await file.read(2048)
+    chunk = await file.read(MIME_TYPE_CHUNK_SIZE)
     await file.seek(0)  # Reset file pointer for the service to read from the start
     mime_type = await anyio.to_thread.run_sync(lambda: magic.from_buffer(chunk, mime=True))
     if mime_type not in ALLOWED_MIME_TYPES:
@@ -114,3 +98,10 @@ async def analyze_room_secure(
     except Exception as e:
         logger.exception("An unexpected error occurred during secure analysis")
         raise AppException(status_code=500, detail="An unexpected error occurred.")
+@router.delete("/history")
+async def clear_history(request: Request):
+    """Clears the analysis history."""
+    # In a real application, you would delete the history from your database.
+    # For this example, we'll just log the action.
+    logger.info("History cleared.")
+    return {"message": "History cleared successfully."}

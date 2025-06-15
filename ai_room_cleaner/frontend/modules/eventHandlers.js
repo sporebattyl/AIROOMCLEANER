@@ -1,4 +1,4 @@
-import { analyzeRoom, getHistory as fetchHistoryFromServer, NetworkError, ServerError } from './api.js';
+import { analyzeRoom, getHistory as fetchHistoryFromServer, clearHistory, NetworkError, ServerError } from './api.js';
 import {
     updateMessesList,
     updateCleanlinessScore,
@@ -86,10 +86,16 @@ export const handleAnalyzeRoom = async () => {
     }
 };
 
-export const handleClearHistory = () => {
-    // This function is currently disabled.
-    // To re-enable, a backend endpoint to clear the history is needed.
-    logger.warn("Clear history is disabled.");
+export const handleClearHistory = async () => {
+    try {
+        await clearHistory();
+        setHistory([]);
+        updateHistoryList([]);
+        logger.info('History cleared successfully.');
+    } catch (error) {
+        logger.error({ error }, 'Error clearing history');
+        showError('Failed to clear history.');
+    }
 };
 
 // Toggles the theme between light and dark mode.

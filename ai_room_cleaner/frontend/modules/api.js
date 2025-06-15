@@ -74,6 +74,9 @@ export const analyzeRoom = async (imageFile) => {
         return await apiService(API_ENDPOINTS.ANALYZE_ROOM, {
             method: 'POST',
             body: formData,
+            headers: {
+                'X-API-KEY': 'YOUR_API_KEY' // This should be retrieved from a config file
+            }
         });
     } catch (error) {
         logger.error({ error }, 'Error analyzing room');
@@ -86,6 +89,14 @@ export const getHistory = async () => {
         return await apiService(API_ENDPOINTS.HISTORY);
     } catch (error) {
         logger.error({ error }, 'Error fetching history');
+        throw error;
+    }
+};
+export const clearHistory = async () => {
+    try {
+        return await apiService('history', { method: 'DELETE' });
+    } catch (error) {
+        logger.error({ error }, 'Error clearing history');
         throw error;
     }
 };

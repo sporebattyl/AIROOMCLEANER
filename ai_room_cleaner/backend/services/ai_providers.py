@@ -56,25 +56,26 @@ class AIProvider(ABC):
 
     def _parse_ai_response(self, text_content: str) -> List[Dict[str, Any]]:
         logger.debug(f"Attempting to parse AI response: {text_content}")
-        match = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", text_content)
-        if match:
-            text_content = match.group(1)
         try:
+            match = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", text_content)
+            if match:
+                text_content = match.group(1)
+            
             data = json.loads(text_content.strip())
+
             if isinstance(data, dict) and "tasks" in data:
                 tasks = data["tasks"]
                 if isinstance(tasks, list):
                     logger.info(f"Successfully parsed {len(tasks)} tasks.")
                     return tasks
-                else:
-                    raise AIError("AI response's 'tasks' key is not a list.")
-            elif isinstance(data, list):
+            
+            if isinstance(data, list):
                 logger.warning("AI returned a list instead of a dict. Converting to new format.")
                 return [{"mess": str(item), "reason": "N/A"} for item in data]
-            else:
-                raise AIError("AI response is not a JSON object with a 'tasks' key.")
+
+            raise AIError("AI response is not in the expected format.")
         except json.JSONDecodeError:
-            logger.error("Failed to decode JSON from AI response.", exc_info=True)
+            logger.warning("Failed to decode JSON from AI response. Falling back to text-based parsing.")
             return self._parse_text_response(text_content)
 
     def _parse_text_response(self, text: str) -> List[Dict[str, Any]]:

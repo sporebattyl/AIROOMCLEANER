@@ -25,7 +25,7 @@ from backend.core.exceptions import (
 )
 from backend.utils.image_processing import resize_image_with_vips, configure_pyvips
 from .ai_providers import get_ai_provider, AIProvider
-from backend.api.constants import ALLOWED_MIME_TYPES
+from backend.api.constants import ALLOWED_MIME_TYPES, FILE_READ_CHUNK_SIZE
 
 
 class AIService:
@@ -99,7 +99,7 @@ class AIService:
 
         try:
             with open(temp_path, "wb") as buffer:
-                while chunk := await upload_file.read(8192): # Read in 8KB chunks
+                while chunk := await upload_file.read(FILE_READ_CHUNK_SIZE):
                     current_size += len(chunk)
                     if current_size > max_size:
                         raise AIError(f"Image size exceeds maximum of {self.settings.MAX_IMAGE_SIZE_MB}MB.")
