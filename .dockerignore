@@ -1,7 +1,11 @@
 # Git files
-.git
+.git/
 .gitignore
 .gitattributes
+
+# Docker
+Dockerfile
+docker-compose.yml
 
 # Python cache
 __pycache__/
@@ -9,13 +13,19 @@ __pycache__/
 *.pyo
 *.pyd
 
-# Test cache
+# Test files
+tests/
 .pytest_cache/
+pytest.ini
+.coverage
+
+# Node.js
+node_modules/
+ai_room_cleaner/frontend/node_modules/
+
+# Local environment / config
+.env
+config.yaml
 
 # Documentation
 *.md
-
-# Local environment
-.env
-# Node
-ai_room_cleaner/frontend/node_modules/

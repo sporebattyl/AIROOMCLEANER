@@ -6,16 +6,21 @@ __pycache__/
 .Python
 env/
 venv/
+.env
+
+# Node.js
+node_modules/
+dist/
+
+# macOS
+.DS_Store
+
+# Logs
+ai_room_cleaner/logs/
 
 # VSCode
 .vscode/
-Claudefixes/
-# Env
-.env
-
-# Node
-ai_room_cleaner/frontend/node_modules/
 
 # Python cache
-.pytest_cache
+.pytest_cache/
 .coverage
