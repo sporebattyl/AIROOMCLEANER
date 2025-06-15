@@ -16,7 +16,7 @@ COPY poetry.lock pyproject.toml ./
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir poetry && \
     poetry config virtualenvs.create false && \
-    poetry install --without dev --no-interaction --no-ansi
+    poetry install --no-root --without dev --no-interaction --no-ansi
 
 
 # Stage 2: Final production stage
