@@ -17,3 +17,5 @@ __pycache__/
 
 # Local environment
 .env
+# Node
+ai_room_cleaner/frontend/node_modules/

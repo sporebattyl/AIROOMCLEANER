@@ -10,3 +10,12 @@ venv/
 # VSCode
 .vscode/
 Claudefixes/
+# Env
+.env
+
+# Node
+ai_room_cleaner/frontend/node_modules/
+
+# Python cache
+.pytest_cache
+.coverage
