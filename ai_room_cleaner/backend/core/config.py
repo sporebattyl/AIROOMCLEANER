@@ -50,4 +50,4 @@ def get_settings() -> AppSettings:
     """
     return AppSettings()
 
-settings = get_settings()
+# The settings object is now accessed via the get_settings() function.

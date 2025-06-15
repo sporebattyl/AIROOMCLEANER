@@ -13,6 +13,8 @@ from backend.api.router import router as api_router, limiter as api_limiter
 from backend.core.exceptions import AppException
 from backend.services.ai_service import AIService
 from backend.core.logging import setup_logging, LoggingMiddleware
+from backend.services.history_service import HistoryService
+from backend.core.state import initialize_state
 import time
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
@@ -28,8 +30,8 @@ async def lifespan(app: FastAPI):
     try:
         settings = get_settings()
         ai_service = AIService(settings)
-        app.state.ai_service = ai_service
-        app.state.settings = settings
+        history_service = HistoryService()
+        await initialize_state(ai_service, history_service, settings)
         app.state.limiter = api_limiter
         logger.info("AI service and application state initialized.")
         
@@ -109,7 +111,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=get_settings().cors_allowed_origins,
     allow_credentials=True,
-    allow_methods=["GET", "POST"],
+    allow_methods=["GET", "POST", "DELETE"],
     allow_headers=["Content-Type", "Authorization"],
 )
 app.add_middleware(LoggingMiddleware)
@@ -121,12 +123,13 @@ class RequestSizeLimitMiddleware(BaseHTTPMiddleware):
         self.max_size = max_size
 
     async def dispatch(self, request: Request, call_next):
-        if "content-length" not in request.headers:
-            return JSONResponse(status_code=411, content={"detail": "Content-Length required"})
-        
-        content_length = int(request.headers["content-length"])
-        if content_length > self.max_size:
-            return JSONResponse(status_code=413, content={"detail": "Payload too large"})
+        if request.method == "POST":
+            if "content-length" not in request.headers:
+                return JSONResponse(status_code=411, content={"detail": "Content-Length required"})
+            
+            content_length = int(request.headers["content-length"])
+            if content_length > self.max_size:
+                return JSONResponse(status_code=413, content={"detail": "Payload too large"})
         
         return await call_next(request)
 

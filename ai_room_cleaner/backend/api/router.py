@@ -11,8 +11,8 @@ from slowapi import Limiter
 from slowapi.util import get_remote_address
 
 from backend.api.constants import ANALYZE_ROUTE, ALLOWED_MIME_TYPES, MIME_TYPE_CHUNK_SIZE
-from backend.core.config import settings
-from backend.core.state import State
+from backend.core.config import get_settings
+from backend.core.state import get_state
 from backend.core.exceptions import (
     AIProviderError,
     AppException,
@@ -22,6 +22,7 @@ from backend.core.exceptions import (
     InvalidFileTypeError,
 )
 from backend.services.ai_service import AIService
+from backend.services.history_service import HistoryService
 router = APIRouter()
 limiter = Limiter(key_func=get_remote_address)
 
@@ -31,7 +32,7 @@ api_key_scheme = APIKeyHeader(name="X-API-KEY", auto_error=False)
 
 async def get_api_key(api_key: str = Security(api_key_scheme)):
     """Validates the API key from the X-API-KEY header."""
-    if not settings.api_key or not api_key or not secrets.compare_digest(api_key, settings.api_key.get_secret_value()):
+    if not api_key or api_key != get_settings().api_key.get_secret_value():
         raise HTTPException(status_code=401, detail="Missing or invalid API key")
     return api_key
 
@@ -42,12 +43,18 @@ def get_http_client(request: Request) -> httpx.AsyncClient:
     return request.app.state.http_client
 
 
+@router.get("/config")
+async def get_frontend_config(request: Request, api_key: str = Security(get_api_key)):
+    """Provides frontend configuration, including the API key."""
+    return {"apiKey": get_settings().api_key.get_secret_value()}
+
+
 @router.get("/health")
 async def health_check(
     request: Request, client: httpx.AsyncClient = Depends(get_http_client)
 ):
     """Comprehensive health check for the service and its dependencies."""
-    ai_service: AIService = request.app.state.ai_service
+    ai_service: AIService = get_state().ai_service
     health_data = {
         "status": "healthy",
         "service": "AI Room Cleaner",
@@ -75,7 +82,7 @@ async def analyze_room_secure(
     This endpoint avoids loading the entire file into memory.
     """
     logger.info("Received request for secure room analysis")
-    ai_service: AIService = request.app.state.ai_service
+    ai_service: AIService = get_state().ai_service
 
     # Validate image type by reading a small chunk, not the whole file
     chunk = await file.read(MIME_TYPE_CHUNK_SIZE)
@@ -98,10 +105,16 @@ async def analyze_room_secure(
     except Exception as e:
         logger.exception("An unexpected error occurred during secure analysis")
         raise AppException(status_code=500, detail="An unexpected error occurred.")
+@router.get("/history")
+async def get_history(request: Request):
+    """Returns the analysis history."""
+    history_service: HistoryService = get_state().history_service
+    return await history_service.get_history()
+
+
 @router.delete("/history")
-async def clear_history(request: Request):
+async def clear_history(request: Request, api_key: str = Security(get_api_key)):
     """Clears the analysis history."""
-    # In a real application, you would delete the history from your database.
-    # For this example, we'll just log the action.
-    logger.info("History cleared.")
+    history_service: HistoryService = get_state().history_service
+    await history_service.clear_history()
     return {"message": "History cleared successfully."}

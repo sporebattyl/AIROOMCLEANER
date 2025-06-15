@@ -14,6 +14,7 @@ from typing import List, Dict, Any
 import bleach
 from fastapi import UploadFile
 from werkzeug.utils import secure_filename
+import google.generativeai as genai
 
 from backend.core.config import AppSettings
 from backend.core.exceptions import (
@@ -26,6 +27,7 @@ from backend.core.exceptions import (
 from backend.utils.image_processing import resize_image_with_vips, configure_pyvips
 from .ai_providers import get_ai_provider, AIProvider
 from backend.api.constants import ALLOWED_MIME_TYPES, FILE_READ_CHUNK_SIZE
+from backend.core.state import get_state
 
 
 class AIService:
@@ -110,9 +112,12 @@ class AIService:
 
             resized_image_bytes = self._process_image(image_bytes)
             sanitized_prompt = self._sanitize_prompt(self.settings.AI_PROMPT)
-            return await self.ai_provider.analyze_image(
+            result = await self.ai_provider.analyze_image(
                 resized_image_bytes, sanitized_prompt, upload_file.content_type
             )
+            for item in result:
+                await get_state().history_service.add_to_history(item)
+            return result
         finally:
             shutil.rmtree(temp_dir)
             await upload_file.close()

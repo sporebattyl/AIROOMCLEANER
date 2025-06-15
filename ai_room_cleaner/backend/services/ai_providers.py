@@ -187,13 +187,15 @@ class GoogleGeminiProvider(AIProvider):
             raise AIProviderError("Failed to analyze image with Gemini.") from e
 
     async def health_check(self) -> bool:
-        """Performs a health check for the Google Gemini provider."""
-        is_healthy = self.client is not None
-        if is_healthy:
+        """Performs a live health check against the Google Gemini API."""
+        try:
+            # A lightweight, low-cost call to verify connectivity
+            await self.client.count_tokens("hello")
             logger.info("Google Gemini health check successful.")
-        else:
-            logger.error("Google Gemini health check failed: client not initialized.")
-        return is_healthy
+            return True
+        except Exception as e:
+            logger.error(f"Google Gemini health check failed: {e}")
+            return False
 
 def get_ai_provider(provider_name: str, settings: AppSettings) -> AIProvider:
     """Factory function to get an AI provider instance."""

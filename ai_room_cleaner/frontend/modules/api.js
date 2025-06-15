@@ -1,9 +1,10 @@
-import { getApiConfig } from '../config.js';
+import { getApiConfig, getConfig } from '../config.js';
 import logger from './logger.js';
 
 const API_ENDPOINTS = Object.freeze({
     ANALYZE_ROOM: 'v1/analyze-room-secure',
     HISTORY: 'history',
+    CONFIG: 'config',
 });
 
 const getApiUrl = (endpoint) => {
@@ -67,6 +68,7 @@ const apiService = async (endpoint, options = {}) => {
 };
 
 export const analyzeRoom = async (imageFile) => {
+    const { apiKey } = await getConfig();
     const formData = new FormData();
     formData.append('file', imageFile);
 
@@ -75,7 +77,7 @@ export const analyzeRoom = async (imageFile) => {
             method: 'POST',
             body: formData,
             headers: {
-                'X-API-KEY': 'YOUR_API_KEY' // This should be retrieved from a config file
+                'X-API-KEY': apiKey
             }
         });
     } catch (error) {
@@ -92,9 +94,24 @@ export const getHistory = async () => {
         throw error;
     }
 };
-export const clearHistory = async () => {
+
+export const getConfig = async () => {
     try {
-        return await apiService('history', { method: 'DELETE' });
+        return await apiService(API_ENDPOINTS.CONFIG);
+    } catch (error) {
+        logger.error({ error }, 'Error fetching config');
+        throw error;
+    }
+};
+export const clearHistory = async () => {
+    const { apiKey } = await getConfig();
+    try {
+        return await apiService(API_ENDPOINTS.HISTORY, {
+            method: 'DELETE',
+            headers: {
+                'X-API-KEY': apiKey,
+            },
+        });
     } catch (error) {
         logger.error({ error }, 'Error clearing history');
         throw error;

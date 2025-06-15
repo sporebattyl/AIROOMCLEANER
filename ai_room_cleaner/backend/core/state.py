@@ -1,75 +1,33 @@
 import asyncio
 import json
 import os
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, TYPE_CHECKING
 from loguru import logger
 
-from backend.services.ai_service import AIService
+from backend.services.history_service import HistoryService
 from backend.core.config import AppSettings
+
+if TYPE_CHECKING:
+    from backend.services.ai_service import AIService
 
 
 _state: Optional["State"] = None
 
 
 class State:
-    """A class to manage shared application resources and history."""
+    """A class to manage shared application resources."""
 
-    def __init__(self, ai_service: AIService, settings: AppSettings):
+    def __init__(self, ai_service: "AIService", history_service: HistoryService, settings: AppSettings):
         """
-        Initializes the State with services. History is loaded separately.
+        Initializes the State with services.
         Args:
             ai_service: An instance of the AIService.
+            history_service: An instance of the HistoryService.
             settings: The application settings object.
         """
         self.ai_service = ai_service
-        self.history_file = settings.history_file_path
-        self.history: List[Dict[str, Any]] = []
-
-    @classmethod
-    async def create(cls, ai_service: AIService, settings: AppSettings) -> "State":
-        """
-        Asynchronously creates and initializes a State instance.
-        """
-        state = cls(ai_service, settings)
-        await state.load_history()
-        return state
-
-    async def add_analysis_to_history(self, analysis: Dict[str, Any]):
-        """Adds a new analysis result to the history and saves it."""
-        self.history.insert(0, analysis)
-        # Keep history to a reasonable size
-        if len(self.history) > 50:
-            self.history = self.history[:50]
-        await self.save_history()
-
-    def get_history(self) -> List[Dict[str, Any]]:
-        """Returns the current analysis history."""
-        return self.history
-
-    async def save_history(self):
-        """Saves the analysis history to a file asynchronously."""
-        try:
-            import aiofiles
-            os.makedirs(os.path.dirname(self.history_file), exist_ok=True)
-            async with aiofiles.open(self.history_file, "w") as f:
-                await f.write(json.dumps(self.history, indent=2))
-        except Exception as e:
-            logger.error(f"Failed to save history: {e}", exc_info=True)
-
-    async def load_history(self):
-        """Loads analysis history from a JSON file asynchronously."""
-        if not os.path.exists(self.history_file):
-            logger.info(f"History file not found at {self.history_file}. Starting with an empty history.")
-            return
-        try:
-            import aiofiles
-            async with aiofiles.open(self.history_file, "r") as f:
-                content = await f.read()
-                self.history = json.loads(content)
-            logger.info(f"Loaded {len(self.history)} history items from {self.history_file}")
-        except (json.JSONDecodeError, TypeError, FileNotFoundError) as e:
-            logger.error(f"Failed to load or parse history from {self.history_file}: {e}", exc_info=True)
-            self.history = []
+        self.history_service = history_service
+        self.settings = settings
 
 
 def get_state() -> "State":
@@ -83,7 +41,7 @@ def get_state() -> "State":
     return _state
 
 
-async def initialize_state(ai_service: AIService, settings: AppSettings) -> "State":
+async def initialize_state(ai_service: "AIService", history_service: HistoryService, settings: AppSettings) -> "State":
     """
     Initializes the application state. This should be called once at startup.
     """
@@ -93,5 +51,5 @@ async def initialize_state(ai_service: AIService, settings: AppSettings) -> "Sta
         return _state
 
     logger.info("Initializing application state.")
-    _state = await State.create(ai_service, settings)
+    _state = State(ai_service, history_service, settings)
     return _state
