@@ -10,7 +10,7 @@ sys.modules['magic'] = mock_magic
 import pytest
 import asyncio
 from unittest.mock import AsyncMock, patch
-from backend.core.config import Settings
+from backend.core.config import AppSettings as Settings
 from backend.services.ai_service import AIService
 from backend.core.state import State
 

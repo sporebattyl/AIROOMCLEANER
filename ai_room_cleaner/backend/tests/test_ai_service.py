@@ -10,7 +10,7 @@ from backend.core.exceptions import (
     InvalidAPIKeyError,
     APIResponseError,
 )
-from backend.core.config import Settings
+from backend.core.config import AppSettings as Settings
 from pydantic import SecretStr
 
 @pytest.fixture
@@ -20,9 +20,8 @@ def mock_settings(monkeypatch):
         AI_PROVIDER="openai",
         AI_MODEL="gpt-4-turbo",
         AI_API_ENDPOINT=None,
-        AI_API_KEY=SecretStr("fake_key"),
-        OPENAI_API_KEY=SecretStr("fake_key"),
-        GOOGLE_API_KEY=SecretStr("fake_key"),
+        ai_api_key=SecretStr("fake_key"),
+        OPENAI_MAX_TOKENS=1000,
         history_file_path="/data/history.json",
         camera_entity="camera.test",
         api_key=SecretStr("fake_key"),

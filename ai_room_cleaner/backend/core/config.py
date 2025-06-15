@@ -3,7 +3,7 @@ from typing import Optional
 from pydantic import Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-class Settings(BaseSettings):
+class AppSettings(BaseSettings):
     """
     Centralized application configuration using pydantic-settings.
     Settings are loaded from environment variables or a .env file.
@@ -17,10 +17,7 @@ class Settings(BaseSettings):
     AI_PROVIDER: str = Field("openai", description="The AI provider to use ('openai' or 'google').")
     AI_MODEL: str = Field("gpt-4-turbo", description="The specific AI model to use.")
     AI_API_ENDPOINT: Optional[str] = Field(None, description="The API endpoint for the AI service.")
-    AI_API_KEY: Optional[SecretStr] = Field(None, description="The API key for the AI service.")
-    
-    OPENAI_API_KEY: Optional[SecretStr] = Field(None, description="The API key for OpenAI.")
-    GOOGLE_API_KEY: Optional[SecretStr] = Field(None, description="The API key for Google Gemini.")
+    ai_api_key: SecretStr = Field(..., description="The API key for the AI service.")
     OPENAI_MAX_TOKENS: int = Field(1000, description="The maximum number of tokens for OpenAI API calls.")
 
     history_file_path: str = Field("/data/history.json", description="The path to the history file.")
@@ -45,12 +42,12 @@ class Settings(BaseSettings):
         return v.lower()
 
 @lru_cache()
-def get_settings() -> Settings:
+def get_settings() -> AppSettings:
     """
-    Returns a cached instance of the Settings object.
-    The lru_cache decorator ensures that the Settings object is only created once,
+    Returns a cached instance of the AppSettings object.
+    The lru_cache decorator ensures that the AppSettings object is only created once,
     improving performance by avoiding repeated file reads and object initializations.
     """
-    return Settings()
+    return AppSettings()
 
 settings = get_settings()

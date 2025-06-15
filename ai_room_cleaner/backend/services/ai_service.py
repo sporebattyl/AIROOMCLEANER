@@ -15,7 +15,7 @@ import bleach
 from fastapi import UploadFile
 from werkzeug.utils import secure_filename
 
-from backend.core.config import Settings
+from backend.core.config import AppSettings
 from backend.core.exceptions import (
     AIError,
     ConfigError,
@@ -34,7 +34,7 @@ class AIService:
     Uses the Strategy and Factory patterns to support multiple AI providers.
     """
 
-    def __init__(self, settings: Settings):
+    def __init__(self, settings: AppSettings):
         self.settings = settings
         # The AI provider is determined by the settings
         self.ai_provider: AIProvider = get_ai_provider(settings.AI_PROVIDER, settings)

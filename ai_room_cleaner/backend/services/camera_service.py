@@ -2,11 +2,11 @@ import base64
 import httpx
 from loguru import logger
 
-from backend.core.config import Settings
+from backend.core.config import AppSettings
 from backend.core.exceptions import CameraError, ConfigError
 
 
-async def get_camera_image(camera_entity_id: str, settings: Settings) -> str:
+async def get_camera_image(camera_entity_id: str, settings: AppSettings) -> str:
     """
     Fetches the image from the specified Home Assistant camera entity.
     Raises:
@@ -17,11 +17,11 @@ async def get_camera_image(camera_entity_id: str, settings: Settings) -> str:
     if not camera_entity_id or not isinstance(camera_entity_id, str):
         raise ValueError("Camera entity ID must be a non-empty string.")
 
-    if not settings.supervisor_token:
+    if not settings.api_key:
         raise ConfigError("Supervisor token is not configured.")
 
     api_url = f"{settings.supervisor_url}/camera_proxy/{camera_entity_id}"
-    headers = {"Authorization": f"Bearer {settings.supervisor_token.get_secret_value()}"}
+    headers = {"Authorization": f"Bearer {settings.api_key.get_secret_value()}"}
 
     try:
         async with httpx.AsyncClient() as client:

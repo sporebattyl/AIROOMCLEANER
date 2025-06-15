@@ -103,7 +103,8 @@ async def analyze_room_secure(
         )
 
     try:
-        # The AI service now handles API key management and remote calls.
+        # The AI service now handles the upload file directly, streaming it to avoid
+        # loading the entire file into memory. This is more memory-efficient.
         result = await ai_service.analyze_image_from_upload(upload_file=file)
         return JSONResponse(content=result)
 

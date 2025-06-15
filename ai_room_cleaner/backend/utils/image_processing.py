@@ -7,7 +7,7 @@ except (ImportError, OSError) as e:
     VIPS_ERROR = str(e)
 
 import hashlib
-from backend.core.config import Settings
+from backend.core.config import AppSettings
 from loguru import logger
 from backend.core.exceptions import ImageProcessingError
 from cachetools import TTLCache
@@ -15,7 +15,7 @@ from cachetools import TTLCache
 # In-memory cache for resized images (100 items, 1-hour TTL)
 cache = TTLCache(maxsize=100, ttl=3600)
 
-def configure_pyvips(settings: Settings):
+def configure_pyvips(settings: AppSettings):
     """Configures pyvips settings based on application configuration."""
     if not VIPS_AVAILABLE:
         logger.warning(f"pyvips not available, skipping configuration. Error: {VIPS_ERROR}")
@@ -28,7 +28,7 @@ def configure_pyvips(settings: Settings):
         logger.error(f"Failed to configure pyvips: {e}")
         raise ImageProcessingError(f"Failed to configure image processing: {str(e)}")
 
-def resize_image_with_vips(image_bytes: bytes, settings: Settings) -> bytes:
+def resize_image_with_vips(image_bytes: bytes, settings: AppSettings) -> bytes:
     """
     Resizes an image using pyvips with memory-saving strategies and error handling.
     """

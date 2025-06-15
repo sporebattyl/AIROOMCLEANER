@@ -5,7 +5,7 @@ from typing import List, Dict, Any, Optional
 from loguru import logger
 
 from backend.services.ai_service import AIService
-from backend.core.config import Settings
+from backend.core.config import AppSettings
 
 
 _state: Optional["State"] = None
@@ -14,7 +14,7 @@ _state: Optional["State"] = None
 class State:
     """A class to manage shared application resources and history."""
 
-    def __init__(self, ai_service: AIService, settings: Settings):
+    def __init__(self, ai_service: AIService, settings: AppSettings):
         """
         Initializes the State with services. History is loaded separately.
         Args:
@@ -26,7 +26,7 @@ class State:
         self.history: List[Dict[str, Any]] = []
 
     @classmethod
-    async def create(cls, ai_service: AIService, settings: Settings) -> "State":
+    async def create(cls, ai_service: AIService, settings: AppSettings) -> "State":
         """
         Asynchronously creates and initializes a State instance.
         """
@@ -83,7 +83,7 @@ def get_state() -> "State":
     return _state
 
 
-async def initialize_state(ai_service: AIService, settings: Settings) -> "State":
+async def initialize_state(ai_service: AIService, settings: AppSettings) -> "State":
     """
     Initializes the application state. This should be called once at startup.
     """

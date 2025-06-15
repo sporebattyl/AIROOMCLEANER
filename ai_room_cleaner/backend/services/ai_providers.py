@@ -29,7 +29,7 @@ except ImportError:
     openai = None
     OPENAI_AVAILABLE = False
 
-from backend.core.config import Settings
+from backend.core.config import AppSettings
 from backend.core.exceptions import (
     AIError,
     ConfigError,
@@ -41,7 +41,7 @@ from backend.core.exceptions import (
 class AIProvider(ABC):
     """Abstract base class for AI providers."""
 
-    def __init__(self, settings: Settings):
+    def __init__(self, settings: AppSettings):
         self.settings = settings
 
     @abstractmethod
@@ -97,13 +97,13 @@ class AIProvider(ABC):
 class OpenAIProvider(AIProvider):
     """AI Provider implementation for OpenAI's GPT models."""
 
-    def __init__(self, settings: Settings):
+    def __init__(self, settings: AppSettings):
         super().__init__(settings)
         if not OPENAI_AVAILABLE or not openai:
             raise ConfigError("OpenAI library not installed. Please run: pip install openai")
-        if not self.settings.OPENAI_API_KEY:
+        if not self.settings.ai_api_key:
             raise ConfigError("OpenAI API key is not configured.")
-        self.client = openai.AsyncOpenAI(api_key=self.settings.OPENAI_API_KEY.get_secret_value())
+        self.client = openai.AsyncOpenAI(api_key=self.settings.ai_api_key.get_secret_value())
 
     async def analyze_image(self, image_data: bytes, prompt: str, mime_type: str = "image/jpeg") -> List[Dict[str, Any]]:
         if not self.client:
@@ -150,13 +150,13 @@ class OpenAIProvider(AIProvider):
 class GoogleGeminiProvider(AIProvider):
     """AI Provider implementation for Google's Gemini models."""
 
-    def __init__(self, settings: Settings):
+    def __init__(self, settings: AppSettings):
         super().__init__(settings)
         if not GOOGLE_AVAILABLE or not genai:
             raise ConfigError("Google AI libraries not installed. Please run: pip install google-generativeai")
-        if not self.settings.GOOGLE_API_KEY:
+        if not self.settings.ai_api_key:
             raise ConfigError("Google API key is not configured.")
-        genai.configure(api_key=self.settings.GOOGLE_API_KEY.get_secret_value())
+        genai.configure(api_key=self.settings.ai_api_key.get_secret_value())
         self.client = genai.GenerativeModel(self.settings.AI_MODEL)
 
     async def analyze_image(self, image_data: bytes, prompt: str, mime_type: str = "image/jpeg") -> List[Dict[str, Any]]:
@@ -194,7 +194,7 @@ class GoogleGeminiProvider(AIProvider):
             logger.error("Google Gemini health check failed: client not initialized.")
         return is_healthy
 
-def get_ai_provider(provider_name: str, settings: Settings) -> AIProvider:
+def get_ai_provider(provider_name: str, settings: AppSettings) -> AIProvider:
     """Factory function to get an AI provider instance."""
     provider_name = provider_name.lower()
     if provider_name == "openai":
