@@ -4,8 +4,10 @@ Main application file for the AI Room Cleaner backend.
 import os
 import sys
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 import httpx
+from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -28,6 +30,15 @@ from ai_room_cleaner.backend.services.history_service import HistoryService
 @asynccontextmanager
 async def lifespan(fastapi_app: FastAPI):
     """Manage application startup and shutdown events."""
+    # Load environment variables from .env file in the project root
+    # This ensures that settings are loaded before any other initialization
+    env_path = Path(__file__).resolve().parents[2] / ".env"
+    if env_path.is_file():
+        load_dotenv(dotenv_path=env_path)
+        logger.info(f"Loaded environment variables from: {env_path}")
+    else:
+        logger.warning(f".env file not found at {env_path}, continuing without it.")
+
     setup_logging()
     logger.info("--- AI Room Cleaner Starting Up ---")
 
