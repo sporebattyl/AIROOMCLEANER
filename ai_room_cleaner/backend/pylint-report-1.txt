@@ -1,2 +1,0 @@
-************* Module ai_room_cleaner/backend
-ai_room_cleaner/backend:1:0: F0001: No module named ai_room_cleaner/backend (fatal)
