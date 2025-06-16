@@ -1,10 +1,14 @@
+"""
+Logging setup and middleware for the AI Room Cleaner application.
+"""
 import sys
-import json
-from loguru import logger
-from fastapi import Request
 import uuid
+
+from fastapi import Request
+from loguru import logger
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.responses import Response
+
 
 def setup_logging():
     """
@@ -16,7 +20,8 @@ def setup_logging():
     logger.add(
         sys.stdout,
         level="INFO",
-        format="{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {name}:{function}:{line} - {message}",
+        format="{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | "
+        "{name}:{function}:{line} - {message}",
         colorize=True,
     )
 
@@ -30,9 +35,15 @@ def setup_logging():
         retention="30 days",
     )
 
-class LoggingMiddleware(BaseHTTPMiddleware):
+
+class LoggingMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few-public-methods
+    """
+    Middleware that adds a unique request ID to each log entry.
+    """
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         request_id = str(uuid.uuid4())
         with logger.contextualize(request_id=request_id):
             response = await call_next(request)
-            return response
+        return response
+
+logging_middleware = LoggingMiddleware  # pylint: disable=invalid-name

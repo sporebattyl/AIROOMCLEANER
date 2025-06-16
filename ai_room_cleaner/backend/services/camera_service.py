@@ -1,9 +1,13 @@
+"""
+Service to interact with the Home Assistant camera proxy.
+"""
 import base64
+
 import httpx
 from loguru import logger
 
-from backend.core.config import AppSettings
-from backend.core.exceptions import CameraError, ConfigError
+from ..core.config import AppSettings
+from ..core.exceptions import CameraError, ConfigError
 
 
 async def get_camera_image(camera_entity_id: str, settings: AppSettings) -> str:
@@ -20,6 +24,9 @@ async def get_camera_image(camera_entity_id: str, settings: AppSettings) -> str:
     if not settings.api_key:
         raise ConfigError("Supervisor token is not configured.")
 
+    if not settings.supervisor_url:
+        raise ConfigError("Supervisor URL is not configured.")
+
     api_url = f"{settings.supervisor_url}/camera_proxy/{camera_entity_id}"
     headers = {"Authorization": f"Bearer {settings.api_key.get_secret_value()}"}
 
@@ -28,13 +35,17 @@ async def get_camera_image(camera_entity_id: str, settings: AppSettings) -> str:
             logger.info(f"Fetching camera image from: {api_url}")
             response = await client.get(api_url, headers=headers, timeout=10)
             response.raise_for_status()  # Raise HTTPError for bad responses (4xx or 5xx)
-            
+
             logger.info("Successfully fetched camera image.")
             return base64.b64encode(response.content).decode("utf-8")
-            
+
     except httpx.HTTPStatusError as e:
-        logger.error(f"HTTP error fetching image: {e.response.status_code} - {e.response.text}")
-        raise CameraError(f"Failed to fetch camera image: {e.response.status_code}") from e
+        logger.error(
+            f"HTTP error fetching image: {e.response.status_code} - {e.response.text}"
+        )
+        raise CameraError(
+            f"Failed to fetch camera image: {e.response.status_code}"
+        ) from e
     except httpx.RequestError as e:
         logger.error(f"Request error getting camera image: {e}")
         raise CameraError(f"Failed to connect to camera: {e}") from e

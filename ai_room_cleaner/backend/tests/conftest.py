@@ -1,6 +1,7 @@
+"""Fixtures for pytest."""
 import os
 import sys
-from unittest.mock import MagicMock, AsyncMock, patch
+from unittest.mock import MagicMock, patch
 
 # Mock the 'magic' library at the module level to prevent ImportError
 mock_magic = MagicMock()
@@ -9,13 +10,13 @@ sys.modules['magic'] = mock_magic
 
 import pytest
 import asyncio
-from backend.core.config import get_settings
-from backend.services.ai_service import AIService
-from backend.services.history_service import HistoryService
-from backend.services.ai_providers import AIProvider
-from backend.core.state import State
+from ..core.config import get_settings
+from ..services.ai_service import AIService
+from ..services.history_service import HistoryService
+from ..services.ai_providers import AIProvider
+from ..core.state import _AppState
 
-def pytest_configure(config):
+def pytest_configure(_config):
     """
     Set default environment variables before test collection.
     This ensures that the settings model can be validated when it's
@@ -67,4 +68,7 @@ def history_service():
 @pytest.fixture
 async def app_state(ai_service, history_service, mock_settings):
     """Create application state for testing."""
-    return State(ai_service, history_service, mock_settings)
+    state = _AppState()
+    state.initialize(ai_service, history_service, mock_settings)
+    return state
+

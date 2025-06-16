@@ -1,55 +1,55 @@
-import asyncio
-import json
-import os
-from typing import List, Dict, Any, Optional, TYPE_CHECKING
+"""
+Manages the shared application state for the AI Room Cleaner.
+"""
+from typing import Optional, TYPE_CHECKING
+from contextlib import asynccontextmanager
+
 from loguru import logger
 
-from backend.services.history_service import HistoryService
-from backend.core.config import AppSettings
+from .config import AppSettings
+from ..services.history_service import HistoryService
 
 if TYPE_CHECKING:
-    from backend.services.ai_service import AIService
+    from ai_room_cleaner.backend.services.ai_service import AIService
 
 
-_state: Optional["State"] = None
-
-
-class State:
+class _AppState:  # pylint: disable=too-few-public-methods
     """A class to manage shared application resources."""
 
-    def __init__(self, ai_service: "AIService", history_service: HistoryService, settings: AppSettings):
-        """
-        Initializes the State with services.
-        Args:
-            ai_service: An instance of the AIService.
-            history_service: An instance of the HistoryService.
-            settings: The application settings object.
-        """
+    def __init__(self):
+        self.ai_service: Optional["AIService"] = None
+        self.history_service: Optional[HistoryService] = None
+        self.settings: Optional[AppSettings] = None
+
+    def initialize(
+        self,
+        ai_service: "AIService",
+        history_service: HistoryService,
+        settings: AppSettings,
+    ):
+        """Initializes the application state."""
+        if self.settings is not None:
+            logger.warning("State is already initialized. Ignoring subsequent call.")
+            return
         self.ai_service = ai_service
         self.history_service = history_service
         self.settings = settings
+        logger.info("Application state initialized.")
 
 
-def get_state() -> "State":
-    """
-    Returns the singleton instance of the State.
-    This function is the single point of access for the application state.
-    """
-    global _state
-    if _state is None:
-        raise RuntimeError("State has not been initialized. Call initialize_state first.")
-    return _state
+APP_STATE = _AppState()
 
 
-async def initialize_state(ai_service: "AIService", history_service: HistoryService, settings: AppSettings) -> "State":
-    """
-    Initializes the application state. This should be called once at startup.
-    """
-    global _state
-    if _state is not None:
-        logger.warning("State is already initialized. Ignoring subsequent call.")
-        return _state
+def get_state() -> _AppState:
+    """Returns the application state instance."""
+    return APP_STATE
 
-    logger.info("Initializing application state.")
-    _state = State(ai_service, history_service, settings)
-    return _state
+
+@asynccontextmanager
+async def initialize_state(
+    ai_service: "AIService", history_service: HistoryService, settings: AppSettings
+):
+    """Initializes and tears down the application state."""
+    APP_STATE.initialize(ai_service, history_service, settings)
+    yield
+    logger.info("Application state torn down.")

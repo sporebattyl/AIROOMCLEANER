@@ -2,6 +2,7 @@
   "name": "frontend",
   "version": "1.0.0",
   "main": "main.js",
+  "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -13,6 +14,8 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "eslint": "^9.29.0",
+    "globals": "^13.20.0",
     "pino": "^9.2.0"
   },
   "devDependencies": {

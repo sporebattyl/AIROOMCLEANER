@@ -1,19 +1,18 @@
 version: '3.8'
 services:
-  ai-room-cleaner:
+  backend:
     build:
       context: ./ai_room_cleaner
-      dockerfile: Dockerfile
+      dockerfile: backend/Dockerfile
+    volumes:
+      - ./ai_room_cleaner/backend:/app
+      - ./logs:/app/logs
     ports:
       - "8000:8000"
-    env_file:
-      - ./ai_room_cleaner/.env
+  frontend:
+    build:
+      context: ./ai_room_cleaner/frontend
     volumes:
-      - ./data:/app/data
-      - ./logs:/app/logs
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-    restart: unless-stopped
+      - ./ai_room_cleaner/frontend:/app
+    ports:
+      - "5173:5173"

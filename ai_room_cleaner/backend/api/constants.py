@@ -1,5 +1,6 @@
-# Constants for the API endpoints
-# This file contains the constants for the API endpoints used in the application.
+"""
+Constants for the API endpoints.
+"""
 
 # The endpoint for analyzing the room
 ANALYZE_ROUTE = "/v1/analyze-room-secure"

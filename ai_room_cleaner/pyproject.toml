@@ -37,7 +37,11 @@ packages = [
 pytest = "^8.4.0"
 pytest-asyncio = "^1.0.0"
 pytest-cov = "^5.0.0"
+pip-audit = "^2.7.0"
+pylint = "^3.2.5"
 
+[tool.pylint.main]
+ignore-patterns = ["^\\..*", "dist", "node_modules", "venv"]
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"

@@ -6,28 +6,27 @@ preprocessing, prompt sanitization, and robust parsing of the AI's response.
 """
 import asyncio
 import base64
-import tempfile
-import shutil
 import os
-from loguru import logger
-from typing import List, Dict, Any
+import shutil
+import tempfile
+from typing import Any, Dict, List
+
 import bleach
 from fastapi import UploadFile
-from werkzeug.utils import secure_filename
-import google.generativeai as genai
+from loguru import logger
 
-from backend.core.config import AppSettings
-from backend.core.exceptions import (
+from ..api.constants import ALLOWED_MIME_TYPES, FILE_READ_CHUNK_SIZE
+from ..core.config import AppSettings
+from ..core.exceptions import (
     AIError,
+    AIProviderError,
     ConfigError,
     ImageProcessingError,
-    AIProviderError,
-    InvalidFileTypeError
+    InvalidFileTypeError,
 )
-from backend.utils.image_processing import resize_image_with_vips, configure_pyvips
-from .ai_providers import get_ai_provider, AIProvider
-from backend.api.constants import ALLOWED_MIME_TYPES, FILE_READ_CHUNK_SIZE
-from backend.core.state import get_state
+from ..core.state import get_state
+from ..utils.image_processing import configure_pyvips, resize_image_with_vips
+from .ai_providers import AIProvider, get_ai_provider
 
 
 class AIService:
@@ -46,17 +45,16 @@ class AIService:
 
     async def health_check(self) -> Dict[str, Any]:
         """Performs a health check on the configured AI service."""
-        is_healthy = await self.ai_provider.health_check()
-        if is_healthy:
-            return {"status": "ok", "provider": self.settings.AI_PROVIDER}
-        else:
-            return {"status": "error", "provider": self.settings.AI_PROVIDER, "details": "Failed to connect to AI provider."}
+        return await self.ai_provider.health_check()
 
     async def analyze_room_for_mess(self, image_base64: str) -> List[Dict[str, Any]]:
         """
         Analyzes a room image for mess by delegating to the configured AI provider.
         """
-        logger.info(f"Using AI provider: {self.settings.AI_PROVIDER}, model: {self.settings.AI_MODEL}")
+        logger.info(
+            f"Using AI provider: {self.settings.AI_PROVIDER}, "
+            f"model: {self.settings.AI_MODEL}"
+        )
 
         # Validate the input image data
         if not image_base64 or not isinstance(image_base64, str):
@@ -81,10 +79,16 @@ class AIService:
             logger.error(f"A specific error occurred: {e}")
             raise
         except Exception as e:
-            logger.error(f"An unexpected error occurred in room analysis: {e}", exc_info=True)
-            raise AIError(f"An unexpected error occurred during analysis: {str(e)}")
+            logger.error(
+                f"An unexpected error occurred in room analysis: {e}", exc_info=True
+            )
+            raise AIError(
+                f"An unexpected error occurred during analysis: {str(e)}"
+            ) from e
 
-    async def analyze_image_from_upload(self, upload_file: UploadFile) -> List[Dict[str, Any]]:
+    async def analyze_image_from_upload(  # pylint: disable=too-many-locals
+        self, upload_file: UploadFile
+    ) -> List[Dict[str, Any]]:
         """
         Analyzes an image from an UploadFile by securely streaming it to a temporary file.
         """
@@ -93,7 +97,10 @@ class AIService:
         if upload_file.content_type not in ALLOWED_MIME_TYPES:
             raise InvalidFileTypeError(f"Invalid file type: {upload_file.content_type}")
 
-        safe_filename = secure_filename(upload_file.filename)
+        # Sanitize the filename to prevent security risks
+        safe_filename = "".join(
+            c for c in os.path.basename(upload_file.filename) if c.isalnum() or c in "._-"
+        )
         temp_dir = tempfile.mkdtemp()
         temp_path = os.path.join(temp_dir, safe_filename)
         max_size = self.settings.MAX_IMAGE_SIZE_MB * 1024 * 1024
@@ -104,7 +111,10 @@ class AIService:
                 while chunk := await upload_file.read(FILE_READ_CHUNK_SIZE):
                     current_size += len(chunk)
                     if current_size > max_size:
-                        raise AIError(f"Image size exceeds maximum of {self.settings.MAX_IMAGE_SIZE_MB}MB.")
+                        raise AIError(
+                            f"Image size exceeds maximum of "
+                            f"{self.settings.MAX_IMAGE_SIZE_MB}MB."
+                        )
                     buffer.write(chunk)
 
             with open(temp_path, "rb") as f:
@@ -115,8 +125,10 @@ class AIService:
             result = await self.ai_provider.analyze_image(
                 resized_image_bytes, sanitized_prompt, upload_file.content_type
             )
-            for item in result:
-                await get_state().history_service.add_to_history(item)
+            history_service = get_state().history_service
+            if history_service:
+                for item in result:
+                    await history_service.add_to_history(item)
             return result
         finally:
             shutil.rmtree(temp_dir)
@@ -125,26 +137,31 @@ class AIService:
     async def _decode_and_validate_image(self, image_base64: str) -> bytes:
         """Decodes, validates, and checks the size of the base64 image."""
         try:
-            image_bytes = await asyncio.to_thread(base64.b64decode, image_base64, validate=True)
-        except Exception as e:
-            raise AIError(f"Invalid base64 image data: {str(e)}")
+            image_bytes = await asyncio.to_thread(
+                base64.b64decode, image_base64, validate=True
+            )
+        except (ValueError, TypeError) as e:
+            raise AIError(f"Invalid base64 image data: {str(e)}") from e
 
         if not image_bytes:
             raise AIError("Decoded image data is empty.")
 
         max_size = self.settings.MAX_IMAGE_SIZE_MB * 1024 * 1024
         if len(image_bytes) > max_size:
-            raise AIError(f"Image size ({len(image_bytes)} bytes) exceeds maximum of {self.settings.MAX_IMAGE_SIZE_MB}MB.")
-        
+            raise AIError(
+                f"Image size ({len(image_bytes)} bytes) exceeds maximum of "
+                f"{self.settings.MAX_IMAGE_SIZE_MB}MB."
+            )
+
         return image_bytes
 
     def _process_image(self, image_bytes: bytes) -> bytes:
         """Resizes the image using the vips utility."""
         try:
             return resize_image_with_vips(image_bytes, self.settings)
-        except Exception as e:
+        except (ValueError, IOError) as e:
             logger.error(f"Image processing failed: {e}", exc_info=True)
-            raise ImageProcessingError(f"Failed to process image: {str(e)}")
+            raise ImageProcessingError(f"Failed to process image: {str(e)}") from e
 
     def _sanitize_prompt(self, prompt: str) -> str:
         """Sanitizes the prompt to remove any potentially harmful content."""

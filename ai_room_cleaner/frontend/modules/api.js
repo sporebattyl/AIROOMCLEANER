@@ -1,74 +1,12 @@
-import { getApiConfig, getConfig } from '../config.js';
+import { getApiConfig as getLocalConfig } from '../config.js';
 import logger from './logger.js';
+import { apiService } from './service.js';
+import { API_ENDPOINTS } from './constants.js';
 
-const API_ENDPOINTS = Object.freeze({
-    ANALYZE_ROOM: 'v1/analyze-room-secure',
-    HISTORY: 'history',
-    CONFIG: 'config',
-});
-
-const getApiUrl = (endpoint) => {
-    const { apiUrl } = getApiConfig();
-    // URL constructor for robust URL creation
-    const url = new URL(endpoint, apiUrl);
-    return url.href;
-};
-
-export class NetworkError extends Error {
-    constructor(message) {
-        super(message);
-        this.name = 'NetworkError';
-    }
-}
-
-export class ServerError extends Error {
-    constructor(message, status) {
-        super(message);
-        this.name = 'ServerError';
-        this.status = status;
-    }
-}
-
-const apiService = async (endpoint, options = {}) => {
-    const url = getApiUrl(endpoint);
-
-    const headers = { ...options.headers };
-    if (!(options.body instanceof FormData)) {
-        headers['Content-Type'] = 'application/json';
-    }
-
-    try {
-        const response = await fetch(url, {
-            ...options,
-            headers,
-        });
-
-        if (!response.ok) {
-            let errorMessage = `HTTP error! status: ${response.status}`;
-            try {
-                const errorData = await response.json();
-                errorMessage = errorData.detail || errorMessage;
-            } catch (e) {
-                // Ignore if response is not json
-            }
-            throw new ServerError(errorMessage, response.status);
-        }
-
-        const data = await response.json();
-        logger.info({ url, status: response.status }, 'API call successful');
-        return data;
-    } catch (error) {
-        if (error instanceof ServerError) {
-            logger.error({ url, status: error.status, error: error.message }, 'Server error');
-            throw error;
-        }
-        logger.error({ url, error: error.message }, 'Network error');
-        throw new NetworkError('Failed to connect to the server. Please check your network connection.');
-    }
-};
+export { NetworkError, ServerError } from './errors.js';
 
 export const analyzeRoom = async (imageFile) => {
-    const { apiKey } = await getConfig();
+    const { apiKey } = await getLocalConfig();
     const formData = new FormData();
     formData.append('file', imageFile);
 
@@ -95,7 +33,7 @@ export const getHistory = async () => {
     }
 };
 
-export const getConfig = async () => {
+export const fetchServerConfig = async () => {
     try {
         return await apiService(API_ENDPOINTS.CONFIG);
     } catch (error) {
@@ -104,7 +42,7 @@ export const getConfig = async () => {
     }
 };
 export const clearHistory = async () => {
-    const { apiKey } = await getConfig();
+    const { apiKey } = await getLocalConfig();
     try {
         return await apiService(API_ENDPOINTS.HISTORY, {
             method: 'DELETE',

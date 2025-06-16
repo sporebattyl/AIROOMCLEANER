@@ -1,12 +1,26 @@
-// Default configuration
+import { fetchServerConfig } from './modules/api.js';
+import logger from './modules/logger.js';
+
+let config = null;
+
 const defaultConfig = {
-    apiUrl: `${window.location.origin}/api/`
+    apiUrl: `${window.location.origin}/api/`,
 };
 
-// Reads configuration from a global object, which can be populated by a CI/CD pipeline.
-export const getApiConfig = () => {
-    if (window.__APP_CONFIG__) {
-        return { ...defaultConfig, ...window.__APP_CONFIG__ };
+async function loadConfig() {
+    try {
+        const serverConfig = await fetchServerConfig();
+        config = { ...defaultConfig, ...serverConfig };
+        logger.info({ config }, 'Configuration loaded from server');
+    } catch (error) {
+        logger.error({ error }, 'Failed to load server configuration, using defaults.');
+        config = { ...defaultConfig };
     }
-    return defaultConfig;
+}
+
+export const getApiConfig = async () => {
+    if (!config) {
+        await loadConfig();
+    }
+    return config;
 };
