@@ -24,3 +24,4 @@ ai_room_cleaner/logs/
 # Python cache
 .pytest_cache/
 .coverage
+src/ai-room-cleaner
