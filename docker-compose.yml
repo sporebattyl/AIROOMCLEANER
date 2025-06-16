@@ -5,14 +5,16 @@ services:
       context: ./ai_room_cleaner
       dockerfile: backend/Dockerfile
     volumes:
-      - ./ai_room_cleaner:/app/ai_room_cleaner
+      - ./ai_room_cleaner/backend:/app/ai_room_cleaner/backend
       - ./ai_room_cleaner/pyproject.toml:/app/pyproject.toml
       - ./logs:/app/logs
-    working_dir: /app
+    working_dir: /app/ai_room_cleaner/backend
     ports:
       - "8000:8000"
     environment:
       - PYTHONPATH=/app
+    env_file:
+      - .env
   frontend:
     build:
       context: ./ai_room_cleaner/frontend

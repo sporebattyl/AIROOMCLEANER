@@ -14,15 +14,15 @@ from loguru import logger
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
-from .api.router import limiter
-from .api.router import router as api_router
-from .core.config import get_settings
-from .core.exceptions import AppException
-from .core.logging import setup_logging
-from .core.state import APP_STATE
-from .middleware import LoggingMiddleware, RequestSizeLimitMiddleware
-from .services.ai_service import AIService
-from .services.history_service import HistoryService
+from ai_room_cleaner.backend.api.router import limiter
+from ai_room_cleaner.backend.api.router import router as api_router
+from ai_room_cleaner.backend.core.config import get_settings
+from ai_room_cleaner.backend.core.exceptions import AppException
+from ai_room_cleaner.backend.core.logging import setup_logging
+from ai_room_cleaner.backend.core.state import APP_STATE
+from ai_room_cleaner.backend.middleware import LoggingMiddleware, RequestSizeLimitMiddleware
+from ai_room_cleaner.backend.services.ai_service import AIService
+from ai_room_cleaner.backend.services.history_service import HistoryService
 
 
 @asynccontextmanager

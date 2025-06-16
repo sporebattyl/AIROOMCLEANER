@@ -94,7 +94,7 @@ async def health_check():
 @router.post(ANALYZE_ROUTE)
 @limiter.limit("10/minute")
 async def analyze_room_secure(
-    file: UploadFile = File(...), _: str = Security(get_api_key)
+    request: Request, file: UploadFile = File(...), _: str = Security(get_api_key)
 ):
     """
     Securely analyzes an image by streaming it to the AI service.
