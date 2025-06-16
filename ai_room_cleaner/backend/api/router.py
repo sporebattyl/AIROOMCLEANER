@@ -93,7 +93,7 @@ async def health_check():
 
 @router.post(ANALYZE_ROUTE)
 @limiter.limit("10/minute")
-async def analyze_room_secure(
+async def analyze_room_secure(  # pylint: disable=unused-argument
     request: Request, file: UploadFile = File(...), _: str = Security(get_api_key)
 ):
     """
