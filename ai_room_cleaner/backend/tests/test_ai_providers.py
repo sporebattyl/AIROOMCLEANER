@@ -1,14 +1,14 @@
 import pytest
 from unittest.mock import MagicMock, patch, AsyncMock
 from pydantic import SecretStr
-from backend.services.ai_providers import (
+from ai_room_cleaner.backend.services.ai_providers import (
     get_ai_provider,
     OpenAIProvider,
     GoogleGeminiProvider,
     AIProvider,
 )
-from backend.core.config import AppSettings
-from backend.core.exceptions import (
+from ai_room_cleaner.backend.core.config import AppSettings
+from ai_room_cleaner.backend.core.exceptions import (
     AIError,
     ConfigError,
     InvalidAPIKeyError,
@@ -103,14 +103,14 @@ def test_parse_text_response_empty_and_comments(mock_settings):
 
 def test_get_ai_provider_openai(mock_settings):
     """Test if get_ai_provider returns OpenAIProvider."""
-    with patch('backend.services.ai_providers.OpenAIProvider') as mock_openai:
+    with patch('ai_room_cleaner.backend.services.ai_providers.OpenAIProvider') as mock_openai:
         get_ai_provider("openai", mock_settings)
         mock_openai.assert_called_once_with(mock_settings)
 
 def test_get_ai_provider_google(mock_settings):
     """Test if get_ai_provider returns GoogleGeminiProvider."""
     mock_settings.AI_PROVIDER = "google"
-    with patch('backend.services.ai_providers.GoogleGeminiProvider') as mock_google:
+    with patch('ai_room_cleaner.backend.services.ai_providers.GoogleGeminiProvider') as mock_google:
         get_ai_provider("google", mock_settings)
         mock_google.assert_called_once_with(mock_settings)
 
@@ -159,7 +159,7 @@ async def test_openai_analyze_image_api_error(mock_async_openai, mock_settings):
     mock_async_openai.return_value = mock_client
 
     provider = OpenAIProvider(mock_settings)
-    with pytest.raises(AIProviderError, match="Failed to analyze image with OpenAI."):
+    with pytest.raises(AIProviderError, match="An unexpected error occurred with OpenAI."):
         await provider.analyze_image(b"fake_image_data", "prompt")
 
 @pytest.mark.asyncio
@@ -171,7 +171,7 @@ async def test_openai_health_check_success(mock_async_openai, mock_settings):
     mock_async_openai.return_value = mock_client
 
     provider = OpenAIProvider(mock_settings)
-    assert await provider.health_check() is True
+    assert (await provider.health_check())["status"] == "ok"
 
 @pytest.mark.asyncio
 @patch('backend.services.ai_providers.openai.AsyncOpenAI')
@@ -182,12 +182,13 @@ async def test_openai_health_check_failure(mock_async_openai, mock_settings):
     mock_async_openai.return_value = mock_client
 
     provider = OpenAIProvider(mock_settings)
-    assert await provider.health_check() is False
+    with pytest.raises(AIProviderError):
+        await provider.health_check()
 
 # -- GoogleGeminiProvider Tests --
 
-@patch('backend.services.ai_providers.genai.GenerativeModel')
-@patch('backend.services.ai_providers.genai.configure')
+@patch('ai_room_cleaner.backend.services.ai_providers.GenerativeModel')
+@patch('ai_room_cleaner.backend.services.ai_providers.configure')
 def test_google_provider_init_success(mock_configure, mock_genai_model, mock_settings):
     """Test successful initialization of GoogleGeminiProvider."""
     mock_settings.AI_PROVIDER = "google"
@@ -204,7 +205,7 @@ def test_google_provider_init_no_api_key(mock_settings):
         GoogleGeminiProvider(mock_settings)
 
 @pytest.mark.asyncio
-@patch('backend.services.ai_providers.genai.GenerativeModel')
+@patch('ai_room_cleaner.backend.services.ai_providers.GenerativeModel')
 async def test_google_analyze_image_success(mock_genai_model, mock_settings):
     """Test successful image analysis with GoogleGeminiProvider."""
     mock_response = MagicMock()
@@ -220,7 +221,7 @@ async def test_google_analyze_image_success(mock_genai_model, mock_settings):
     assert result == [{"mess": "clean room", "reason": "messy"}]
 
 @pytest.mark.asyncio
-@patch('backend.services.ai_providers.genai.GenerativeModel')
+@patch('ai_room_cleaner.backend.services.ai_providers.GenerativeModel')
 async def test_google_analyze_image_api_error(mock_genai_model, mock_settings):
     """Test Google API error during image analysis."""
     mock_client = MagicMock()
@@ -232,7 +233,7 @@ async def test_google_analyze_image_api_error(mock_genai_model, mock_settings):
         await provider.analyze_image(b"fake_image_data", "prompt")
 
 @pytest.mark.asyncio
-@patch('backend.services.ai_providers.genai.GenerativeModel')
+@patch('ai_room_cleaner.backend.services.ai_providers.GenerativeModel')
 async def test_google_health_check_success(mock_genai_model, mock_settings):
     """Test successful health check for GoogleGeminiProvider."""
     mock_client = MagicMock()
@@ -240,15 +241,16 @@ async def test_google_health_check_success(mock_genai_model, mock_settings):
     mock_genai_model.return_value = mock_client
 
     provider = GoogleGeminiProvider(mock_settings)
-    assert await provider.health_check() is True
+    assert (await provider.health_check())["status"] == "ok"
 
 @pytest.mark.asyncio
-@patch('backend.services.ai_providers.genai.GenerativeModel')
+@patch('ai_room_cleaner.backend.services.ai_providers.GenerativeModel')
 async def test_google_health_check_failure(mock_genai_model, mock_settings):
     """Test failed health check for GoogleGeminiProvider."""
     mock_client = MagicMock()
-    mock_client.count_tokens = AsyncMock(side_effect=Exception("API Error"))
+    mock_client.count_tokens = MagicMock(side_effect=Exception("API Error"))
     mock_genai_model.return_value = mock_client
 
     provider = GoogleGeminiProvider(mock_settings)
-    assert await provider.health_check() is False
+    with pytest.raises(AIProviderError):
+        await provider.health_check()

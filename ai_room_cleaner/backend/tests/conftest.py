@@ -10,13 +10,13 @@ sys.modules['magic'] = mock_magic
 
 import pytest
 import asyncio
-from ..core.config import get_settings
-from ..services.ai_service import AIService
-from ..services.history_service import HistoryService
-from ..services.ai_providers import AIProvider
-from ..core.state import _AppState
+from ai_room_cleaner.backend.core.config import get_settings
+from ai_room_cleaner.backend.services.ai_service import AIService
+from ai_room_cleaner.backend.services.history_service import HistoryService
+from ai_room_cleaner.backend.services.ai_providers import AIProvider
+from ai_room_cleaner.backend.core.state import _AppState
 
-def pytest_configure(_config):
+def pytest_configure(config):
     """
     Set default environment variables before test collection.
     This ensures that the settings model can be validated when it's

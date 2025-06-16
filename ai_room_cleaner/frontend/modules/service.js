@@ -3,7 +3,10 @@ import logger from './logger.js';
 import { NetworkError, ServerError } from './errors.js';
 
 const getApiUrl = (endpoint) => {
-    const { apiUrl } = getApiConfig();
+    let { apiUrl } = getApiConfig();
+    if (typeof process !== 'undefined' && process.env.NODE_ENV === 'test') {
+        apiUrl = apiUrl || 'http://localhost';
+    }
     // URL constructor for robust URL creation
     const url = new URL(endpoint, apiUrl);
     return url.href;

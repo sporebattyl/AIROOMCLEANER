@@ -63,7 +63,7 @@ class AIProvider(ABC):
                 return [{"mess": str(item), "reason": "N/A"} for item in data]
 
             logger.error("AI response is not in the expected format.")
-            return []
+            raise AIError("AI response is not in the expected format.")
         except json.JSONDecodeError:
             logger.warning(
                 "Failed to decode JSON from AI response. "
@@ -74,23 +74,27 @@ class AIProvider(ABC):
     def _parse_text_response(self, text: str) -> List[Dict[str, Any]]:
         logger.warning("Falling back to text-based parsing for AI response.")
         tasks = []
-        lines = text.split('\n')
+        lines = text.split("\n")
         for line in lines:
             line = line.strip()
-            if (
-                not line
-                or line.startswith("#")
-                or line.startswith("{")
-                or line in ["```", "```json", "tasks:"]
-            ):
+            if not line or line.startswith("#"):
                 continue
-            line = line.lstrip('•-*[]"').rstrip('",').strip()
-            if line and len(line) > 10:
-                tasks.append({"mess": line, "reason": "Parsed from text"})
+
+            if line.startswith(("- ", "* ")):
+                mess = line[2:]
+            elif line.startswith('"') and line.endswith('"'):
+                mess = line[1:-1]
+            else:
+                mess = line
+
+            if mess:
+                tasks.append({"mess": mess, "reason": "Parsed from text"})
+
         if not tasks:
             logger.warning("Could not extract any tasks from text response.")
-            return []
-        logger.info(f"Extracted {len(tasks)} tasks using fallback text parser.")
+        else:
+            logger.info(f"Extracted {len(tasks)} tasks using fallback text parser.")
+
         return tasks[:10]
 
 class OpenAIProvider(AIProvider):
@@ -152,6 +156,9 @@ class OpenAIProvider(AIProvider):
         except openai.APIError as e:
             logger.error(f"Error with OpenAI analysis: {e}", exc_info=True)
             raise AIProviderError("Failed to analyze image with OpenAI.") from e
+        except Exception as e:
+            logger.error(f"Unexpected error during OpenAI health check: {e}", exc_info=True)
+            raise AIProviderError("An unexpected error occurred with OpenAI.") from e
 
 class GoogleGeminiProvider(AIProvider):
     """AI Provider implementation for Google's Gemini models."""
@@ -204,6 +211,9 @@ class GoogleGeminiProvider(AIProvider):
             ) from e
         except google_exceptions.GoogleAPICallError as e:
             raise AIProviderError(f"Google API error: {e}") from e
+        except Exception as e:
+            logger.error(f"Unexpected error during Google analysis: {e}", exc_info=True)
+            raise AIProviderError("Failed to analyze image with Gemini.") from e
 
     async def health_check(self) -> dict:
         """Performs a live health check against the Google Gemini API."""
@@ -212,9 +222,20 @@ class GoogleGeminiProvider(AIProvider):
             self.client.count_tokens("hello")
             logger.info("Google Gemini health check successful.")
             return {"status": "ok", "provider": "Google"}
+        except (
+            google_exceptions.PermissionDenied,
+            google_exceptions.Unauthenticated,
+        ) as e:
+            logger.error(f"Google API authentication error during health check: {e}", exc_info=True)
+            raise InvalidAPIKeyError(
+                "Google API key is invalid or has insufficient permissions."
+            ) from e
         except google_exceptions.GoogleAPICallError as e:
             logger.error(f"Google Gemini health check failed: {e}")
-            return {"status": "error", "provider": "Google", "details": str(e)}
+            raise AIProviderError(f"Google API error: {e}") from e
+        except Exception as e:
+            logger.error(f"Unexpected error during Google health check: {e}", exc_info=True)
+            raise AIProviderError(f"Google health check failed: {e}") from e
 
 def get_ai_provider(provider_name: str, settings: AppSettings) -> AIProvider:
     """Factory function to get an AI provider instance."""

@@ -3,9 +3,9 @@ import httpx
 from unittest.mock import patch, MagicMock
 from pydantic import SecretStr
 
-from backend.services.camera_service import get_camera_image
-from backend.core.config import AppSettings
-from backend.core.exceptions import CameraError, ConfigError
+from ai_room_cleaner.backend.services.camera_service import get_camera_image
+from ai_room_cleaner.backend.core.config import AppSettings
+from ai_room_cleaner.backend.core.exceptions import CameraError, ConfigError
 
 @pytest.fixture
 def mock_settings():

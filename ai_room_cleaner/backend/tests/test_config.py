@@ -1,6 +1,6 @@
 import pytest
 from pydantic import ValidationError
-from backend.core.config import get_settings, AppSettings
+from ai_room_cleaner.backend.core.config import get_settings, AppSettings
 
 @pytest.fixture(autouse=True)
 def _clear_settings_cache(monkeypatch):

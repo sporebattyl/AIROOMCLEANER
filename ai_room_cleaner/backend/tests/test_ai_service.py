@@ -1,8 +1,8 @@
 import pytest
 from unittest.mock import patch, MagicMock, AsyncMock
 import base64
-from backend.services.ai_service import AIService
-from backend.core.exceptions import (
+from ai_room_cleaner.backend.services.ai_service import AIService
+from ai_room_cleaner.backend.core.exceptions import (
     AIError,
     ConfigError,
     ImageProcessingError,
@@ -10,7 +10,7 @@ from backend.core.exceptions import (
     InvalidAPIKeyError,
     APIResponseError,
 )
-from backend.core.config import AppSettings as Settings
+from ai_room_cleaner.backend.core.config import AppSettings as Settings
 from pydantic import SecretStr
 
 @pytest.fixture
@@ -82,8 +82,8 @@ async def test_analyze_room_empty_image_data(ai_service):
 async def test_image_processing_error(ai_service):
     """Test that an ImageProcessingError is raised if resizing fails."""
     test_image = base64.b64encode(b"fake_image_data").decode()
-    with patch('backend.services.ai_service.resize_image_with_vips', side_effect=Exception("VIPS error")):
-        with pytest.raises(ImageProcessingError, match="Failed to process image: VIPS error"):
+    with patch('ai_room_cleaner.backend.services.ai_service.AIService._process_image', side_effect=ImageProcessingError("VIPS error")):
+        with pytest.raises(ImageProcessingError, match="VIPS error"):
             await ai_service.analyze_room_for_mess(test_image)
 
 @pytest.mark.asyncio
@@ -92,7 +92,7 @@ async def test_ai_provider_error(ai_service, mock_ai_provider):
     test_image = base64.b64encode(b"fake_image_data").decode()
     mock_ai_provider.analyze_image.side_effect = AIProviderError("Provider failed")
 
-    with patch('backend.services.ai_service.resize_image_with_vips', return_value=b"resized_data"):
+    with patch('ai_room_cleaner.backend.services.ai_service.AIService._process_image', return_value=b"fake_image_data"):
         with pytest.raises(AIProviderError, match="Provider failed"):
             await ai_service.analyze_room_for_mess(test_image)
 

@@ -2,13 +2,13 @@ import pytest
 from unittest.mock import patch, MagicMock
 from pydantic import SecretStr
 
-from backend.utils.image_processing import (
+from ai_room_cleaner.backend.utils.image_processing import (
     resize_image_with_vips,
     configure_pyvips,
     VIPS_AVAILABLE,
 )
-from backend.core.config import AppSettings
-from backend.core.exceptions import ImageProcessingError
+from ai_room_cleaner.backend.core.config import AppSettings
+from ai_room_cleaner.backend.core.exceptions import ImageProcessingError
 
 @pytest.fixture
 def mock_settings():
@@ -64,10 +64,10 @@ def test_resize_image_with_vips_success(mock_pyvips, mock_settings, fake_image_b
         pytest.skip("pyvips not available")
 
 def test_resize_image_without_vips(mock_settings, fake_image_bytes):
-    """Test that original image is returned if pyvips is not available."""
+    """Test that an ImageProcessingError is raised if pyvips is not available."""
     if not VIPS_AVAILABLE:
-        resized = resize_image_with_vips(fake_image_bytes, mock_settings)
-        assert resized == fake_image_bytes
+        with pytest.raises(ImageProcessingError):
+            resize_image_with_vips(fake_image_bytes, mock_settings)
     else:
         pytest.skip("pyvips is available")
 

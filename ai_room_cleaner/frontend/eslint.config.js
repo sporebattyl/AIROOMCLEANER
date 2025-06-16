@@ -13,6 +13,7 @@ export default [
       sourceType: "module",
       globals: {
         ...browser,
+        ...node,
         ...es2021,
       },
     },

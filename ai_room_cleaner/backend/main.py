@@ -18,9 +18,9 @@ from .api.router import limiter
 from .api.router import router as api_router
 from .core.config import get_settings
 from .core.exceptions import AppException
-from .core.logging import logging_middleware, setup_logging
+from .core.logging import setup_logging
 from .core.state import APP_STATE
-from .middleware import request_size_limit_middleware
+from .middleware import LoggingMiddleware, RequestSizeLimitMiddleware
 from .services.ai_service import AIService
 from .services.history_service import HistoryService
 
@@ -130,12 +130,12 @@ app.add_middleware(
     allow_methods=["GET", "POST", "DELETE"],
     allow_headers=["Content-Type", "Authorization"],
 )
-app.middleware("http")(logging_middleware)
+app.add_middleware(LoggingMiddleware)
 
 
 # Add the request size limit middleware
 max_request_size = get_settings().MAX_REQUEST_SIZE_MB * 1024 * 1024
-app.add_middleware(request_size_limit_middleware, max_size=max_request_size)
+app.add_middleware(RequestSizeLimitMiddleware, max_size=max_request_size)
 
 
 # Include the API router

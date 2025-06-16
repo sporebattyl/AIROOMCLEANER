@@ -40,28 +40,24 @@ def resize_image_with_vips(image_bytes: bytes, settings: AppSettings) -> bytes:
     """
     Resizes an image using pyvips with memory-saving strategies and error handling.
     """
+    if not image_bytes:
+        raise ImageProcessingError("Empty image data provided.")
+
+    if not VIPS_AVAILABLE:
+        raise ImageProcessingError(f"pyvips is not available. Error: {VIPS_ERROR}")
+
     # Generate a hash of the image content to use as a cache key
     image_hash = hashlib.sha256(image_bytes).hexdigest()
     if image_hash in cache:
         logger.info(f"Returning cached image for hash: {image_hash}")
         return cache[image_hash]
 
-    if not VIPS_AVAILABLE:
-        logger.warning(f"pyvips not available, returning original image bytes. Error: {VIPS_ERROR}")
-        return image_bytes
-
-    if not image_bytes:
-        raise ImageProcessingError("Empty image data provided")
-
     try:
-        # Load image with format detection
-        if not VIPS_AVAILABLE or not pyvips:
-            return image_bytes
+        if not pyvips:
+            # This should not be reached if VIPS_AVAILABLE is True, but as a safeguard:
+            raise ImageProcessingError("pyvips module is not loaded.")
 
         image = pyvips.Image.new_from_buffer(image_bytes, "")
-
-        if not image:
-            return image_bytes
 
         # Validate image properties
         if image.width <= 0 or image.height <= 0:
