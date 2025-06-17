@@ -153,12 +153,14 @@ app.add_middleware(RequestSizeLimitMiddleware, max_size=max_request_size)
 app.include_router(api_router)
 
 # Mount the frontend directory
-frontend_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "frontend"))
-if os.path.exists(frontend_dir):
-    app.mount("/", StaticFiles(directory=frontend_dir, html=True), name="static")
-    logger.info(f"Mounted frontend directory: {frontend_dir}")
+# Mount the frontend directory, which is now inside the backend directory
+# as a result of the unified Dockerfile build
+frontend_dist_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "frontend", "dist"))
+if os.path.exists(frontend_dist_dir):
+    app.mount("/", StaticFiles(directory=frontend_dist_dir, html=True), name="static")
+    logger.info(f"Mounted frontend directory: {frontend_dist_dir}")
 else:
-    logger.error(f"Frontend directory not found at: {frontend_dir}")
+    logger.error(f"Frontend dist directory not found at: {frontend_dist_dir}")
 
 if __name__ == "__main__":
     import uvicorn
