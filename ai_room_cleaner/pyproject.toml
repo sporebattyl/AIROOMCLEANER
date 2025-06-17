@@ -40,6 +40,10 @@ pytest-cov = "^5.0.0"
 pip-audit = "^2.7.0"
 pylint = "^3.2.5"
 
+[tool.pytest.ini_options]
+pythonpath = [
+  "."
+]
 [tool.pylint.main]
 ignore-patterns = ["^\\..*", "dist", "node_modules", "venv"]
 [build-system]
