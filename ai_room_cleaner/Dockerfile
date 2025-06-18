@@ -1,19 +1,15 @@
-# Stage 1: Build Frontend
-FROM node:20-alpine AS frontend
-WORKDIR /app/frontend
-COPY frontend/package.json frontend/package-lock.json ./
-RUN npm install
-RUN chmod +x /app/frontend/node_modules/.bin/*
-COPY frontend/ ./
-RUN npm run build
+# Use the official Home Assistant base image
+ARG BUILD_FROM
+FROM ${BUILD_FROM}
 
-# Stage 2: Setup Backend
-FROM python:3.13-slim-bookworm
+# Set the working directory
 WORKDIR /app
-COPY --from=frontend /app/frontend/dist ./frontend/dist
-COPY backend/ /app/backend
-WORKDIR /app/backend
-RUN apt-get update && apt-get install -y git && \
-    pip install --no-cache-dir -r requirements.txt
-EXPOSE 8000
-CMD ["python", "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+
+# Copy the application code
+COPY app/ .
+
+# Install Python dependencies
+RUN pip install --no-cache-dir -r requirements.txt
+
+# This will be executed when the container starts
+CMD [ "python", "-u", "main.py" ]

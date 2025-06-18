@@ -1,37 +1,26 @@
-# AI Room Cleaner Addon Configuration
+# See https://developers.home-assistant.io/docs/add-ons/configuration#add-on-config
 name: "AI Room Cleaner"
-version: "0.1.0"
+version: "1.0.0"
 slug: "ai_room_cleaner"
-description: "An intelligent cleanliness assistant using a multimodal AI to keep your room tidy."
+description: "Uses AI to analyze room cleanliness and create a to-do list."
 arch:
   - "aarch64"
   - "amd64"
+  - "armhf"
   - "armv7"
+  - "i386"
 init: false
-panel_icon: "mdi:robot-vacuum"
-ingress: true
-ingress_port: 8000
-startup: "application"
-boot: "auto"
-url: "https://github.com/hassio-addons/addon-ai-room-cleaner"
+map:
+  - "config:rw"
 options:
-  camera_entity: ""
-  api_key: ""
-  ai_model: "gemini-1.5-pro"
-  update_frequency: 60
-  supervisor_url: "http://supervisor/core/api"
-  ai_prompt: >-
-    Analyze this room image for cleanliness. Identify items that are out of place or messy.
-    Return the output as a JSON object with a single key "tasks".
-    The "tasks" key should contain a list of objects, where each object has two keys: "mess" (a string describing the task) and "reason" (a brief explanation).
-    Example: {"tasks": [{"mess": "Clothes on the floor", "reason": "Reduces tidiness and can wrinkle clothes."}]}
-  cors_allowed_origins:
-    - "*"
+  camera_entity_id: "camera.your_camera"
+  ai_provider: "Google Gemini"
+  recheck_interval_minutes: 60
+  todo_list_name: "AI Room Cleaner"
 schema:
-  camera_entity: "str"
+  camera_entity_id: "str"
+  ai_provider: "list(Google Gemini|OpenAI)"
   api_key: "password"
-  ai_model: "str"
-  update_frequency: "int(1,1440)"
-  supervisor_url: "str"
-  ai_prompt: "str"
-  cors_allowed_origins: "list(str)"
+  prompt: "str?"
+  recheck_interval_minutes: "int(1,1440)"
+  todo_list_name: "str"
