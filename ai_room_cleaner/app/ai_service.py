@@ -1,3 +1,4 @@
+import json
 import google.generativeai as genai
 from .config import Config
 
@@ -29,6 +30,16 @@ class AIService:
         """
 
         response = model.generate_content([prompt, image_part])
-        # This assumes the response is a JSON string.
-        # More robust parsing will be added later.
-        return {"cleanliness_score": 0, "todo_list": []}
+        
+        try:
+            # The response text should be a JSON string, possibly with markdown backticks
+            clean_response = response.text.strip().replace("```json", "").replace("```", "")
+            data = json.loads(clean_response)
+            # Basic validation
+            if "cleanliness_score" in data and "todo_list" in data:
+                return data
+            else:
+                raise ValueError("Invalid JSON structure from AI")
+        except (json.JSONDecodeError, ValueError) as e:
+            print(f"Error parsing AI response: {e}")
+            return {"cleanliness_score": 0, "todo_list": []}

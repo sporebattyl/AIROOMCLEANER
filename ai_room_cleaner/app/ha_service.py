@@ -19,12 +19,17 @@ class HomeAssistantService:
         response.raise_for_status()
         return response.content
 
-    def update_todo_list(self, list_name: str, tasks: list[str]):
-        """Updates a to-do list with a new set of tasks."""
-        # This will be implemented later.
-        pass
+    def call_service(self, domain: str, service: str, data: dict):
+        """Calls a service in Home Assistant."""
+        url = f"{self.base_url}/services/{domain}/{service}"
+        response = httpx.post(url, headers=self.headers, json=data)
+        response.raise_for_status()
+        return response.json()
 
-    def update_sensor(self, entity_id: str, state: str, attributes: dict):
-        """Updates the state and attributes of a sensor."""
-        # This will be implemented later.
-        pass
+    def set_state(self, entity_id: str, state: str, attributes: dict):
+        """Sets the state and attributes of an entity."""
+        url = f"{self.base_url}/states/{entity_id}"
+        payload = {"state": state, "attributes": attributes}
+        response = httpx.post(url, headers=self.headers, json=payload)
+        response.raise_for_status()
+        return response.json()
