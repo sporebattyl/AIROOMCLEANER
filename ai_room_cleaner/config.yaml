@@ -1,6 +1,6 @@
 # See https://developers.home-assistant.io/docs/add-ons/configuration#add-on-config
 name: "AI Room Cleaner"
-version: "1.0.0"
+version: "1.0.2"
 slug: "ai_room_cleaner"
 description: "Uses AI to analyze room cleanliness and create a to-do list."
 arch:
