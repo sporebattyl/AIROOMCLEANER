@@ -1,53 +1,40 @@
-# Home Assistant Addon Audit Report - Cycle 2
+# Home Assistant Addon Guardian: Cycle 2 Audit Report
 
-## 1. Failure Analysis
+This report details the findings of a static code audit of the AI Room Cleaner addon. The following issues were identified and require attention.
 
-The previous build cycle failed during container startup. The runtime log showed the following critical error:
+## Audit Checklist
 
-```
-/run/s6/basedir/scripts/rc.init: 76: /run.sh: not found
-```
+### 1. Dockerfile Analysis
 
-This error indicates that the `s6-overlay` init system, which manages the container's lifecycle, could not find the main execution script at the expected path `/run.sh`.
+-   **[HIGH] DL3006: Pin Image Versions**
+    -   **File:** `ai_room_cleaner/Dockerfile`
+    -   **Line:** 3
+    -   **Issue:** The base image `python:3.9-slim-buster` is not pinned to a specific digest.
+    -   **Recommendation:** Pin the image to a specific digest to ensure reproducible builds. For example: `FROM python:3.9-slim-buster@sha256:abc...`
 
-### Root Cause Analysis
+### 2. Shell Script Analysis
 
-A review of the `ai_room_cleaner/Dockerfile` revealed the following issues:
+-   **[MEDIUM] SC1017: Carriage Returns**
+    -   **File:** `ai_room_cleaner/run.sh`
+    -   **Issue:** The script contains literal carriage returns, which can cause execution failures in Unix-like environments.
+    -   **Recommendation:** Convert the line endings from CRLF to LF. This can be done using the `dos2unix` utility or by configuring your editor to save with LF line endings.
 
-1.  **Incorrect File Location:** The `WORKDIR` is set to `/app`. Subsequently, the instruction `COPY --chown=app:app . .` copies the entire build context, including `run.sh`, into the `/app` directory. This results in the script being placed at `/app/run.sh` instead of the required `/run.sh`.
-2.  **Missing Execute Permissions:** The `Dockerfile` does not include a command to grant execute permissions to the `run.sh` script after copying it. Even if the path were correct, the container would fail because the script is not executable.
+-   **[LOW] SC1008: Unrecognized Shebang**
+    -   **File:** `ai_room_cleaner/run.sh`
+    -   **Issue:** The shebang `#!/usr/bin/with-contenv bashio` is not recognized by `shellcheck`.
+    -   **Recommendation:** This is expected in the Home Assistant environment and can be safely ignored.
 
-## 2. Remediation Plan
+### 3. Configuration Review
 
-To resolve the runtime failure, the `Dockerfile` must be modified to place the `run.sh` script in the correct location and set the appropriate permissions. The most direct way to achieve this is by adding specific `COPY` and `RUN` instructions for the `run.sh` file *before* the application files are copied.
+-   **[HIGH] Indentation Error**
+    -   **File:** `ai_room_cleaner/config.yaml`
+    -   **Line:** 17
+    -   **Issue:** The `openai_api_key` option is not correctly indented under the `options` key.
+    -   **Recommendation:** Indent `openai_api_key` to align with the other options.
 
-### Checklist of Required Changes
+### 4. Source Code Review
 
--   [ ] **Modify `Dockerfile`:** Add a `COPY` instruction to place `run.sh` at the root (`/`) of the container's filesystem.
--   [ ] **Modify `Dockerfile`:** Add a `RUN` instruction immediately after the new `COPY` command to grant execute permissions (`chmod a+x`) to `/run.sh`.
--   [ ] **Modify `Dockerfile`:** Adjust the application file `COPY` instruction to prevent it from overwriting or conflicting with the correctly placed `run.sh`.
-
-### Proposed `Dockerfile` Modifications
-
-The following changes should be applied to `ai_room_cleaner/Dockerfile`:
-
-```diff
---- a/ai_room_cleaner/Dockerfile
-+++ b/ai_room_cleaner/Dockerfile
-@@ -13,11 +13,15 @@
-     && adduser --system --ingroup app app
- 
- # Create app directory
--WORKDIR /app
-+WORKDIR /
-+
-+# Copy the run script to the root and make it executable
-+COPY run.sh /run.sh
-+RUN chmod a+x /run.sh
- 
- # Copy application files and install dependencies
-+WORKDIR /app
- COPY --chown=app:app . .
- RUN pip3 install -r requirements.txt
- 
- # Switch to the non-root user
+-   **[MEDIUM] Deprecated FastAPI Event Handler**
+    -   **File:** `ai_room_cleaner/app/main.py`
+    -   **Issue:** The `@app.on_event("startup")` decorator is deprecated and will be removed in future versions of FastAPI.
+    -   **Recommendation:** Move the startup logic into the `lifespan` context manager, which is already partially implemented in the file.

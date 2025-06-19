@@ -18,6 +18,7 @@ async def lifespan(app: FastAPI):
     slug = settings.SLUG
     ha_service.set_state(f"sensor.{slug}_cleanliness_score", "0", {"unit_of_measurement": "%"})
     ha_service.set_state(f"sensor.{slug}_last_analysis", "Never", {})
+    asyncio.create_task(analyze_room_task())
     yield
     # Shutdown
     pass
@@ -48,7 +49,13 @@ async def analyze_room_task():
             # Update to-do list
             todo_entity_id = settings.TODO_LIST_ENTITY_ID
             # Clear existing items
-            ha_service.call_service("todo", "remove_item", {"entity_id": todo_entity_id, "item": "all"})
+            try:
+                state = ha_service.get_state(todo_entity_id)
+                existing_items = state.get('attributes', {}).get('items', [])
+                for item in existing_items:
+                    ha_service.call_service("todo", "remove_item", {"entity_id": todo_entity_id, "item": item})
+            except HomeAssistantError as e:
+                print(f"Could not clear to-do list: {e}")
             # Add new items
             for task in tasks:
                 ha_service.call_service("todo", "add_item", {"item": task, "entity_id": todo_entity_id})
@@ -60,10 +67,6 @@ async def analyze_room_task():
 
         await asyncio.sleep(settings.RECHECK_INTERVAL_MINUTES * 60)
 
-
-@app.on_event("startup")
-async def startup_event():
-    asyncio.create_task(analyze_room_task())
 
 @app.get("/health")
 async def health_check():

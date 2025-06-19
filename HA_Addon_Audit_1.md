@@ -1,44 +1,40 @@
-# Home Assistant Addon Audit Report 1
+# Home Assistant Addon Guardian Audit Report (Cycle 1)
 
-## Pre-flight Check
+This report details the findings of the static code audit for the "AI Room Cleaner" addon. The following issues were identified and require attention.
 
-*   [x] Git installed (version 2.49.0.windows.1)
-*   [x] Docker installed (version 28.1.1)
-*   [x] hadolint installed (version 2.12.0)
-*   [x] shellcheck installed (version 0.10.0)
+## 1. Dockerfile Analysis (`hadolint`)
 
-## Branch
+The `hadolint` tool identified several opportunities for improvement in the addon's Dockerfile.
 
-*   **Branch Name:** `guardian-addon-debug-20250619`
+**Actionable Checklist:**
 
-## Audit Findings & Remediation Plan
+- [ ] **DL3006: Explicit Image Tagging:** Pin the base image to a specific version in the `FROM` instruction to ensure build reproducibility. For example, change `FROM homeassistant/base` to `FROM homeassistant/base:2023.10.0`.
+- [ ] **DL3008: Pin Package Versions:** Specify versions for all packages installed with `apt-get` to prevent unexpected changes from upstream. For example, `apt-get install -y git=1:2.34.1-1`.
+- [ ] **DL3059: Consolidate `RUN` Instructions:** Combine consecutive `RUN` commands using `&&` to reduce the number of layers in the Docker image, which can improve image size and build performance.
+- [ ] **DL3042: Use `--no-cache-dir` with `pip`:** Add the `--no-cache-dir` flag to `pip install` commands to prevent caching, which can reduce the image size.
 
-This audit identifies several areas for improvement in the Home Assistant addon. The following checklist outlines the planned changes to address these issues.
+## 2. Shell Script Analysis (`shellcheck`)
 
-### 1. Dockerfile Improvements
+The `shellcheck` tool found multiple issues in the `run.sh` script.
 
-*   [ ] **DL3006:** The `CMD` should use `exec` form to be the container's PID 1 process.
-*   [ ] **DL3018:** Pin versions for `apt-get install` to ensure reproducible builds.
-*   [ ] **DL3042:** Avoid use of `--no-cache-dir` with pip, as it can negatively impact layer caching.
-*   [ ] **Best Practice:** Combine `RUN` commands to reduce layer count.
-*   [ ] **Best Practice:** Use a non-root user for security.
+**Actionable Checklist:**
 
-### 2. run.sh Improvements
+- [ ] **SC1008: Unrecognized Shebang:** The shebang `#!/usr/bin/with-contenv bashio` is not standard. While it may work in the Home Assistant environment, it prevents standard tools like `shellcheck` from analyzing the script correctly. This does not require a fix but is noted for awareness.
+- [ ] **SC1017: Literal Carriage Returns:** The script contains Windows-style line endings (CRLF). These should be converted to Unix-style line endings (LF) to ensure compatibility. This can be fixed by running `tr -d '\r' < ai_room_cleaner/run.sh > ai_room_cleaner/run.sh.new && mv ai_room_cleaner/run.sh.new ai_room_cleaner/run.sh`.
+- [ ] **SC2155: Declare and Assign Separately:** For better error handling, declare and assign variables in separate steps. For example, `export LOG_LEVEL; LOG_LEVEL=$(bashio::config 'log_level')`.
 
-*   [ ] **SC2086:** Double quote variables to prevent globbing and word splitting.
-*   [ ] **Best Practice:** The `run.sh` script in a Home Assistant addon should handle configuration from `/data/options.json`. The current script does not.
-*   [ ] **Best Practice:** The `CMD` in the Dockerfile and the `run.sh` script are redundant. The `run.sh` should be the single entrypoint.
+## 3. Configuration Review (`config.yaml`)
 
-### 3. config.yaml Improvements
+A manual review of the `config.yaml` file revealed a potential configuration issue.
 
-*   [ ] **Schema:** The `SUPERVISOR_TOKEN` should not be an option that the user can set. It is provided by the supervisor.
-*   [ ] **Schema:** `LOG_LEVEL` has a default, so it should be marked as optional.
-*   [ ] **Options:** The default `ai_prompt` is not very descriptive and could be improved.
+**Actionable Checklist:**
 
-### 4. main.py Improvements
+- [ ] **Missing `openai_api_key` in `options`:** The `openai_api_key` is defined in the `schema` but is not present in the `options` block. If this key is required for the addon to start, it should be added to the `options` with a placeholder value, like `openai_api_key: ""`.
 
-*   [ ] **Error Handling:** The main `try...except` block is too broad. It should be more specific.
-*   [ ] **Configuration:** The script should read configuration from `/data/options.json` via `bashio` in the `run.sh` script, not from environment variables that are set in the `config.yaml`.
-*   [ ] **Hardcoded Values:** The sensor entity IDs are hardcoded. They should be dynamic based on the addon slug.
-*   [ ] **To-Do List:** The to-do list logic is complex and could be simplified. The `get_items` service call is not standard for the `todo` integration.
-*   [ ] **Redundancy:** The application is started with `uvicorn` in both the `Dockerfile` and `run.sh`. This is incorrect. The `Dockerfile` should not start the application.
+## 4. Python Source Code Review (`main.py`)
+
+A high-level review of the Python source code identified a potential runtime error.
+
+**Actionable Checklist:**
+
+- [ ] **Incorrect `todo.remove_item` Service Call:** The `todo.remove_item` service call in `main.py` uses `"item": "all"` to clear the list, which is not supported. This should be replaced with a loop that retrieves all items from the list and removes them one by one.
