@@ -13,14 +13,31 @@ init: false
 map:
   - "config:rw"
 options:
-  camera_entity_id: "camera.your_camera"
-  ai_provider: "Google Gemini"
-  recheck_interval_minutes: 60
-  todo_list_name: "AI Room Cleaner"
+  AI_PROVIDER: "openai"
+  AI_MODEL: "gpt-4-vision-preview"
+  CAMERA_ENTITY: "camera.your_camera"
+  LOG_LEVEL: "INFO"
+  HISTORY_FILE_PATH: "data/history.json"
+  MAX_IMAGE_SIZE_MB: 10
+  MAX_IMAGE_DIMENSION: 2048
+  VIPS_CACHE_MAX: 100
+  HIGH_RISK_DIMENSION_THRESHOLD: 8000
+  CORS_ALLOWED_ORIGINS:
+    - "*"
+  TODO_LIST_NAME: "AI Room Cleaner"
+  RECHECK_INTERVAL_MINUTES: 60
 schema:
-  camera_entity_id: "str"
-  ai_provider: "list(Google Gemini|OpenAI)"
-  api_key: "password"
-  prompt: "str?"
-  recheck_interval_minutes: "int(1,1440)"
-  todo_list_name: "str"
+  AI_PROVIDER: "list(openai)"
+  AI_MODEL: "str"
+  OPENAI_API_KEY: "password"
+  SUPERVISOR_TOKEN: "password?"
+  CAMERA_ENTITY: "str"
+  LOG_LEVEL: "list(CRITICAL|ERROR|WARNING|INFO|DEBUG)?"
+  HISTORY_FILE_PATH: "str?"
+  MAX_IMAGE_SIZE_MB: "int(1,100)?"
+  MAX_IMAGE_DIMENSION: "int(256,8192)?"
+  VIPS_CACHE_MAX: "int(10,1000)?"
+  HIGH_RISK_DIMENSION_THRESHOLD: "int(1024,16384)?"
+  CORS_ALLOWED_ORIGINS: "list(str)?"
+  TODO_LIST_NAME: "str?"
+  RECHECK_INTERVAL_MINUTES: "int(1,1440)?"
