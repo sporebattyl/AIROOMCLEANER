@@ -13,33 +13,20 @@ init: false
 map:
   - "config:rw"
 options:
-  AI_PROVIDER: "openai"
-  AI_MODEL: "gpt-4-vision-preview"
-  CAMERA_ENTITY: "camera.your_camera"
-  LOG_LEVEL: "INFO"
-  HISTORY_FILE_PATH: "data/history.json"
-  MAX_IMAGE_SIZE_MB: 10
-  MAX_IMAGE_DIMENSION: 2048
-  VIPS_CACHE_MAX: 100
-  HIGH_RISK_DIMENSION_THRESHOLD: 8000
-  CORS_ALLOWED_ORIGINS:
-    - "*"
-  TODO_LIST_NAME: "AI Room Cleaner"
-  RECHECK_INTERVAL_MINUTES: 60
-  ai_prompt: "Describe the room's cleanliness in one word: clean, messy, or average."
+  log_level: "INFO"
+  ai_provider: "openai"
+  openai_model: "gpt-4-vision-preview"
+  ai_prompt: >-
+    Analyze the image of the room and identify any items that are out of place or contribute to messiness.
+    Based on your analysis, create a concise to-do list for cleaning the room.
+    Each item on the list should be a clear, actionable task.
+  camera_entity_id: "camera.your_camera"
+  todo_list_entity_id: "todo.ai_room_cleaner"
 schema:
-  AI_PROVIDER: "list(openai)"
-  AI_MODEL: "str"
-  OPENAI_API_KEY: "password"
-  SUPERVISOR_TOKEN: "password?"
-  CAMERA_ENTITY: "str"
-  LOG_LEVEL: "list(CRITICAL|ERROR|WARNING|INFO|DEBUG)?"
-  HISTORY_FILE_PATH: "str?"
-  MAX_IMAGE_SIZE_MB: "int(1,100)?"
-  MAX_IMAGE_DIMENSION: "int(256,8192)?"
-  VIPS_CACHE_MAX: "int(10,1000)?"
-  HIGH_RISK_DIMENSION_THRESHOLD: "int(1024,16384)?"
-  CORS_ALLOWED_ORIGINS: "list(str)?"
-  TODO_LIST_NAME: "str?"
-  RECHECK_INTERVAL_MINUTES: "int(5,1440)?"
-  ai_prompt: "str?"
+  log_level: "list(CRITICAL|ERROR|WARNING|INFO|DEBUG)?"
+  ai_provider: "list(openai)"
+  openai_api_key: "password"
+  openai_model: "str"
+  ai_prompt: "str"
+  camera_entity_id: "str"
+  todo_list_entity_id: "str"

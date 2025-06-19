@@ -2,21 +2,30 @@
 ARG BUILD_FROM
 FROM ${BUILD_FROM}
 
-# Install build dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends python3 python3-pip && rm -rf /var/lib/apt/lists/*
+# Set shell
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+
+# Install build dependencies, create a non-root user, and install python dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends python3 python3-pip \
+    && rm -rf /var/lib/apt/lists/* \
+    && addgroup --system app \
+    && adduser --system --ingroup app app
 
 # Create app directory
+WORKDIR /
+
+# Copy the run script to the root and make it executable
+COPY run.sh /run.sh
+RUN chmod a+x /run.sh
+RUN sed -i 's/\r$//g' /run.sh
+
+# Copy application files and install dependencies
 WORKDIR /app
+COPY --chown=app:app . .
+RUN pip3 install -r requirements.txt
 
-# Copy application files
-ENV PYTHONPATH=/app
-COPY . .
+# Switch to the non-root user
+USER app
 
-# Install Python dependencies
-RUN pip3 install --no-cache-dir -r requirements.txt
-
-# Expose the application port
-EXPOSE 8000
-
-# Start the application
-CMD [ "sh", "-c", "cd /app/app && uvicorn main:app --host 0.0.0.0 --port 8000" ]
+# Set the entrypoint to run.sh
+CMD [ "/run.sh" ]

@@ -1,21 +1,44 @@
-# AI Room Cleaner - Home Assistant Addon Audit (Cycle 1)
+# Home Assistant Addon Audit Report 1
 
-This report details the findings from the initial static code audit of the AI Room Cleaner Home Assistant addon. The following is a checklist of proposed changes to address the identified issues.
+## Pre-flight Check
 
-## Dockerfile (`ai_room_cleaner/Dockerfile`)
+*   [x] Git installed (version 2.49.0.windows.1)
+*   [x] Docker installed (version 28.1.1)
+*   [x] hadolint installed (version 2.12.0)
+*   [x] shellcheck installed (version 0.10.0)
 
-- [ ] **DL3006:** Pin the base image version explicitly. Instead of `FROM python:3.9-slim-buster`, specify a digest or a more specific tag like `FROM python:3.9.18-slim-buster`.
-- [ ] **DL3018:** Pin versions of packages installed with `apk add`. For example, instead of `apk add --no-cache gcc`, use `apk add --no-cache gcc=<version>`.
+## Branch
 
-## Shell Script (`ai_room_cleaner/run.sh`)
+*   **Branch Name:** `guardian-addon-debug-20250619`
 
-- [ ] **SC1008 & SC1017:** The shebang `#!/usr/bin/with-contenv bashio` is not standard and is causing issues with `shellcheck`. While necessary for Home Assistant addons, the script also contains Windows-style line endings (CRLF). The line endings should be converted to Unix-style (LF).
-- [ ] **SC2164:** The `cd /app/app` command should include error handling to prevent the script from continuing if the directory change fails. It should be changed to `cd /app/app || exit 1`.
+## Audit Findings & Remediation Plan
 
-## Python Code (`ai_room_cleaner/app/`)
+This audit identifies several areas for improvement in the Home Assistant addon. The following checklist outlines the planned changes to address these issues.
 
-- [ ] **Architectural Improvement:** The `main.py` file directly instantiates service classes (`HomeAssistantService`, `CameraService`, `AIService`, `HistoryService`). It should instead use the provided dependency injection functions (`get_ha_service`, `get_camera_service`, etc.) from `dependencies.py` to improve modularity and testability.
+### 1. Dockerfile Improvements
 
-## Configuration (`ai_room_cleaner/config.yaml`)
+*   [ ] **DL3006:** The `CMD` should use `exec` form to be the container's PID 1 process.
+*   [ ] **DL3018:** Pin versions for `apt-get install` to ensure reproducible builds.
+*   [ ] **DL3042:** Avoid use of `--no-cache-dir` with pip, as it can negatively impact layer caching.
+*   [ ] **Best Practice:** Combine `RUN` commands to reduce layer count.
+*   [ ] **Best Practice:** Use a non-root user for security.
 
-- [ ] No issues found. The configuration file is well-structured and adheres to the Home Assistant addon schema.
+### 2. run.sh Improvements
+
+*   [ ] **SC2086:** Double quote variables to prevent globbing and word splitting.
+*   [ ] **Best Practice:** The `run.sh` script in a Home Assistant addon should handle configuration from `/data/options.json`. The current script does not.
+*   [ ] **Best Practice:** The `CMD` in the Dockerfile and the `run.sh` script are redundant. The `run.sh` should be the single entrypoint.
+
+### 3. config.yaml Improvements
+
+*   [ ] **Schema:** The `SUPERVISOR_TOKEN` should not be an option that the user can set. It is provided by the supervisor.
+*   [ ] **Schema:** `LOG_LEVEL` has a default, so it should be marked as optional.
+*   [ ] **Options:** The default `ai_prompt` is not very descriptive and could be improved.
+
+### 4. main.py Improvements
+
+*   [ ] **Error Handling:** The main `try...except` block is too broad. It should be more specific.
+*   [ ] **Configuration:** The script should read configuration from `/data/options.json` via `bashio` in the `run.sh` script, not from environment variables that are set in the `config.yaml`.
+*   [ ] **Hardcoded Values:** The sensor entity IDs are hardcoded. They should be dynamic based on the addon slug.
+*   [ ] **To-Do List:** The to-do list logic is complex and could be simplified. The `get_items` service call is not standard for the `todo` integration.
+*   [ ] **Redundancy:** The application is started with `uvicorn` in both the `Dockerfile` and `run.sh`. This is incorrect. The `Dockerfile` should not start the application.
