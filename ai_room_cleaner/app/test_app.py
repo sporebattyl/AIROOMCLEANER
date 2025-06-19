@@ -11,7 +11,7 @@ os.environ["SUPERVISOR_CONFIG_todo_list_name"] = "Test To-Do List"
 os.environ["SUPERVISOR_TOKEN"] = "test_supervisor_token"
 
 # Import the main function after setting environment variables
-from .main import main
+from app.main import main
 
 def run_test():
     """

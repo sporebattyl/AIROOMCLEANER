@@ -5,14 +5,15 @@ from services.ai_service import AIService
 from services.camera_service import CameraService
 from services.ha_service import HomeAssistantService
 from services.history_service import HistoryService
+from dependencies import get_ai_service, get_camera_service, get_ha_service, get_history_service
 import asyncio
 
 async def main():
     """Main application loop."""
-    ha_service = HomeAssistantService()
-    camera_service = CameraService(ha_service)
-    ai_service = AIService(settings)
-    history_service = HistoryService()
+    ha_service = get_ha_service()
+    camera_service = get_camera_service()
+    ai_service = get_ai_service()
+    history_service = get_history_service()
 
     # Create sensor entities
     ha_service.set_state(f"sensor.ai_room_cleaner_cleanliness_score", "0", {"unit_of_measurement": "%"})

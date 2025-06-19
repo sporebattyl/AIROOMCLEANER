@@ -1,4 +1,4 @@
-from .ha_service import HomeAssistantService
+from app.ha_service import HomeAssistantService
 
 class CameraService:
     """Service for fetching images from Home Assistant cameras."""

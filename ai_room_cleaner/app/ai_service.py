@@ -1,6 +1,6 @@
 import json
 import google.generativeai as genai
-from .config import Config
+from app.config import Config
 
 class AIService:
     """Service for interacting with AI models."""

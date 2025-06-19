@@ -1,12 +1,19 @@
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import Field, SecretStr, model_validator
 from enum import Enum
-from typing import List, Optional, Self
+from typing import List, Optional
+from typing_extensions import Self
 
 class AIProvider(str, Enum):
     OPENAI = "openai"
 
 class Settings(BaseSettings):
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        extra="ignore"
+    )
     """Application configuration."""
     
     # Core AI Configuration
@@ -49,7 +56,7 @@ class Settings(BaseSettings):
     def validate_api_keys(self) -> Self:
         """Ensure appropriate API key is set for selected provider"""
         if self.AI_PROVIDER == AIProvider.OPENAI and not self.OPENAI_API_KEY:
-            raise ValueError("OPENAI_API_KEY required when using OpenAI provider")
+            raise ValueError("OPENAI_API_KEY is required when using the OpenAI provider")
         return self
 
     @property
@@ -61,9 +68,5 @@ class Settings(BaseSettings):
             return self.OPENAI_API_KEY
         raise ValueError(f"No API key available for provider: {self.AI_PROVIDER}")
 
-    class Config:
-        case_sensitive = False
-        env_file = ".env"
-        env_file_encoding = "utf-8"
 
 settings: Settings = Settings()

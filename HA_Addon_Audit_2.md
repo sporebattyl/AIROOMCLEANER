@@ -1,0 +1,3 @@
+- **File to Modify:** `ai_room_cleaner/Dockerfile`
+- **Problem:** The `RUN` command for installing packages uses `apk`, which is incorrect for the Debian base image.
+- **Required Change:** Replace the line `RUN apk add --no-cache nodejs npm python3 py3-pip` with `RUN apt-get update && apt-get install -y --no-install-recommends nodejs npm python3 python3-pip && rm -rf /var/lib/apt/lists/*`.
