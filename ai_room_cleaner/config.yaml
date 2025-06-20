@@ -31,7 +31,7 @@ schema:
   ai_provider: "list(openai|google_gemini)"
   openai_api_key: "password"
   openai_model: "str"
-  google_api_key: "secret"
+  google_api_key: "password"
   google_model: "str"
   ai_prompt: "str"
   camera_entity_id: "str"
