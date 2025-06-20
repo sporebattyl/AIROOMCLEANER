@@ -5,4 +5,4 @@ bashio::log.info "Starting AI Room Cleaner..."
 # Configuration is now handled by the application
 
 # Start the uvicorn server
-exec uvicorn app.main:app --host 0.0.0.0 --port 8000
+exec /opt/venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000

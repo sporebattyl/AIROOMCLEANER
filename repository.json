@@ -6,8 +6,7 @@
     "ai_room_cleaner": {
       "name": "AI Room Cleaner",
       "version": "1.0.2",
-      "location": "ai_room_cleaner",
-      "image": "ghcr.io/sporebattyl/ai-room-cleaner-{arch}"
+      "description": "Uses AI to analyze room cleanliness and create a to-do list."
     }
   }
 }
