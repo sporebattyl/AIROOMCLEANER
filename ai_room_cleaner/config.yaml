@@ -19,8 +19,6 @@ options:
   openai_model: "gpt-4-vision-preview"
   google_api_key: ""
   google_model: "gemini-pro-vision"
-  google_api_key: ""
-  google_model: "gemini-pro-vision"
   ai_prompt: >-
     Analyze the image of the room and identify any items that are out of place or contribute to messiness.
     Based on your analysis, create a concise to-do list for cleaning the room.
