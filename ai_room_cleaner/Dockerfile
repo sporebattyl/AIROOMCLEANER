@@ -15,7 +15,7 @@ WORKDIR /
 
 # Copy the run script to the root and make it executable
 COPY run.sh /run.sh
-RUN chmod a+x /run.sh && sed -i 's/\r$//g' /run.sh
+RUN chmod a+x /run.sh
 
 # Copy application files and install dependencies
 WORKDIR /app
