@@ -1,5 +1,5 @@
-from services.ha_service import HomeAssistantService
-from core.config import settings
+from app.services.ha_service import HomeAssistantService
+from app.core.config import settings
 
 class CameraService:
     """

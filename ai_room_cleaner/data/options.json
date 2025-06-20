@@ -1,0 +1,9 @@
+{
+  "log_level": "INFO",
+  "ai_provider": "openai",
+  "openai_api_key": "test",
+  "openai_model": "test",
+  "ai_prompt": "test",
+  "camera_entity_id": "test",
+  "todo_list_entity_id": "test"
+}

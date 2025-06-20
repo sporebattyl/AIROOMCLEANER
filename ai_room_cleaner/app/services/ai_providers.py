@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import Dict, Any
-from core.config import Settings, AIProvider as AIProviderEnum
+from app.core.config import Settings, AIProvider as AIProviderEnum
 import openai
 
 class AIProvider(ABC):

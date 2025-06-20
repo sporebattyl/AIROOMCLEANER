@@ -4,7 +4,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from starlette.middleware.cors import CORSMiddleware
 from app.core.config import settings
-from app.core.exceptions import AIProviderError, ConfigError
+from app.core.exceptions import AIError
 from app.core.logging import InterceptHandler, logger
 from app.core.middleware import RateLimitingMiddleware
 from app.services.ai_service import AIService
@@ -56,18 +56,11 @@ def create_app() -> FastAPI:
     # )
 
     # Add exception handlers
-    @app.exception_handler(AIProviderError)
-    async def ai_provider_error_handler(request: Request, exc: AIProviderError):
+    @app.exception_handler(AIError)
+    async def ai_provider_error_handler(request: Request, exc: AIError):
         return JSONResponse(
             status_code=503,
-            content={"error": "AI_SERVICE_ERROR", "message": exc.detail},
-        )
-
-    @app.exception_handler(ConfigError)
-    async def config_error_handler(request: Request, exc: ConfigError):
-        return JSONResponse(
-            status_code=500,
-            content={"error": "CONFIGURATION_ERROR", "message": exc.detail},
+            content={"error": "AI_SERVICE_ERROR", "message": str(exc)},
         )
 
     return app

@@ -1,15 +1,14 @@
 # Use the official Home Assistant base image
-ARG BUILD_FROM="ghcr.io/home-assistant/amd64-base:2023.10.0"
+ARG BUILD_FROM="ghcr.io/home-assistant/amd64-base-python:latest"
 FROM ${BUILD_FROM}
 
 # Set shell
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
 # Install build dependencies, create a non-root user, and install python dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends python3=3.9.2-3 python3-pip=20.3.4-2+b1 \
-    && rm -rf /var/lib/apt/lists/* \
-    && addgroup --system app \
-    && adduser --system --ingroup app app
+RUN apk add --no-cache python3 py3-pip && \
+    addgroup --system app && \
+    adduser --system --ingroup app app
 
 # Create app directory
 WORKDIR /

@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
+        json_file="/data/options.json",
         case_sensitive=False,
         extra="ignore"
     )
@@ -29,8 +30,8 @@ class Settings(BaseSettings):
     # Home Assistant Integration
     SUPERVISOR_URL: str = Field("http://supervisor/core", description="Home Assistant Supervisor URL")
     SUPERVISOR_TOKEN: Optional[SecretStr] = Field(None, description="Home Assistant Supervisor token")
-    CAMERA_ENTITY_ID: str = Field(..., description="Camera entity ID to use for analysis", alias='camera_entity_id')
-    TODO_LIST_ENTITY_ID: str = Field(..., description="To-do list entity ID", alias='todo_list_entity_id')
+    CAMERA_ENTITY_ID: str = Field("camera.your_camera", description="Camera entity ID to use for analysis", alias='camera_entity_id')
+    TODO_LIST_ENTITY_ID: str = Field("todo.ai_room_cleaner", description="To-do list entity ID", alias='todo_list_entity_id')
 
     # Application Settings
     LOG_LEVEL: str = Field("INFO", description="Logging level", alias='log_level')
@@ -50,12 +51,6 @@ class Settings(BaseSettings):
     # Re-check Interval
     RECHECK_INTERVAL_MINUTES: int = Field(60, description="How often to re-analyze the room")
 
-    @model_validator(mode='after')
-    def validate_api_keys(self) -> Self:
-        """Ensure appropriate API key is set for selected provider"""
-        if self.AI_PROVIDER == AIProvider.OPENAI and not self.OPENAI_API_KEY:
-            raise ValueError("OPENAI_API_KEY is required when using the OpenAI provider")
-        return self
 
     @property
     def current_api_key(self) -> SecretStr:

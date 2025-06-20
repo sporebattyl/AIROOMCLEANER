@@ -53,7 +53,10 @@ async def analyze_room_task():
                 state = ha_service.get_state(todo_entity_id)
                 existing_items = state.get('attributes', {}).get('items', [])
                 for item in existing_items:
-                    ha_service.call_service("todo", "remove_item", {"entity_id": todo_entity_id, "item": item})
+                    # The item from the state is a dictionary, we need to extract the summary
+                    item_name = item.get("summary")
+                    if item_name:
+                        ha_service.call_service("todo", "remove_item", {"entity_id": todo_entity_id, "item": item_name})
             except HomeAssistantError as e:
                 print(f"Could not clear to-do list: {e}")
             # Add new items

@@ -14,8 +14,8 @@ map:
   - "config:rw"
 options:
   log_level: "INFO"
-  openai_api_key: ""
   ai_provider: "openai"
+  openai_api_key: ""
   openai_model: "gpt-4-vision-preview"
   ai_prompt: >-
     Analyze the image of the room and identify any items that are out of place or contribute to messiness.
@@ -24,7 +24,7 @@ options:
   camera_entity_id: "camera.your_camera"
   todo_list_entity_id: "todo.ai_room_cleaner"
 schema:
-  log_level: "list(CRITICAL|ERROR|WARNING|INFO|DEBUG)?"
+  log_level: "match(^(CRITICAL|ERROR|WARNING|INFO|DEBUG)$)"
   ai_provider: "list(openai)"
   openai_api_key: "password"
   openai_model: "str"

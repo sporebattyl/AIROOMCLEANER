@@ -1,8 +1,8 @@
 import base64
 from typing import Dict, Any, List
-from core.config import Settings
-from core.exceptions import AIProviderError
-from services.ai_providers import AIProvider, get_ai_provider
+from app.core.config import Settings
+from app.core.exceptions import AIError
+from app.services.ai_providers import AIProvider, get_ai_provider
 
 class AIService:
     """
@@ -19,10 +19,10 @@ class AIService:
         """
         try:
             image_base64 = base64.b64encode(image_data).decode("utf-8")
-            response = await self.ai_provider.analyze_image(image_base64, self.settings.AI_MODEL)
+            response = await self.ai_provider.analyze_image(image_base64, self.settings.OPENAI_MODEL)
             return self._parse_ai_response(response)
         except Exception as e:
-            raise AIProviderError(f"Failed to analyze image: {e}") from e
+            raise AIError(f"Failed to analyze image: {e}") from e
 
     def _parse_ai_response(self, response: Dict[str, Any]) -> Dict[str, Any]:
         """
