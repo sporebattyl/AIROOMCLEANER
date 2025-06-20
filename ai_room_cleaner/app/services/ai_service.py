@@ -19,7 +19,8 @@ class AIService:
         """
         try:
             image_base64 = base64.b64encode(image_data).decode("utf-8")
-            response = await self.ai_provider.analyze_image(image_base64, self.settings.OPENAI_MODEL)
+            model = self.settings.OPENAI_MODEL if self.settings.AI_PROVIDER == "openai" else self.settings.GOOGLE_MODEL
+            response = await self.ai_provider.analyze_image(image_base64, model)
             return self._parse_ai_response(response)
         except Exception as e:
             raise AIError(f"Failed to analyze image: {e}") from e

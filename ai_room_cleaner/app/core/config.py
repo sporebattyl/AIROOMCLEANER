@@ -7,6 +7,7 @@ import os
 
 class AIProvider(str, Enum):
     OPENAI = "openai"
+    GOOGLE_GEMINI = "google_gemini"
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
@@ -26,6 +27,8 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: Optional[SecretStr] = Field(None, description="OpenAI API key")
     OPENAI_MODEL: str = Field("gpt-4-vision-preview", description="AI model name to use", alias='openai_model')
     AI_PROMPT: str = Field("Analyze the image and create a to-do list for cleaning.", description="The prompt for the AI", alias='ai_prompt')
+    GOOGLE_API_KEY: Optional[SecretStr] = Field(None, description="Google API key", alias='google_api_key')
+    GOOGLE_MODEL: str = Field("gemini-pro-vision", description="Google model name to use", alias='google_model')
 
     # Home Assistant Integration
     SUPERVISOR_URL: str = Field("http://supervisor/core", description="Home Assistant Supervisor URL")
@@ -59,6 +62,10 @@ class Settings(BaseSettings):
             if not self.OPENAI_API_KEY:
                 raise ValueError("OpenAI API key is not set")
             return self.OPENAI_API_KEY
+        if self.AI_PROVIDER == AIProvider.GOOGLE_GEMINI:
+            if not self.GOOGLE_API_KEY:
+                raise ValueError("Google API key is not set")
+            return self.GOOGLE_API_KEY
         raise ValueError(f"No API key available for provider: {self.AI_PROVIDER}")
 
 

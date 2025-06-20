@@ -17,6 +17,10 @@ options:
   ai_provider: "openai"
   openai_api_key: ""
   openai_model: "gpt-4-vision-preview"
+  google_api_key: ""
+  google_model: "gemini-pro-vision"
+  google_api_key: ""
+  google_model: "gemini-pro-vision"
   ai_prompt: >-
     Analyze the image of the room and identify any items that are out of place or contribute to messiness.
     Based on your analysis, create a concise to-do list for cleaning the room.
@@ -25,9 +29,11 @@ options:
   todo_list_entity_id: "todo.ai_room_cleaner"
 schema:
   log_level: "match(^(CRITICAL|ERROR|WARNING|INFO|DEBUG)$)"
-  ai_provider: "list(openai)"
+  ai_provider: "list(openai|google_gemini)"
   openai_api_key: "password"
   openai_model: "str"
+  google_api_key: "secret"
+  google_model: "str"
   ai_prompt: "str"
   camera_entity_id: "str"
   todo_list_entity_id: "str"
