@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+set -ex
 
 bashio::log.info "Starting AI Room Cleaner..."
 
@@ -13,3 +14,5 @@ echo "Current working directory: $(pwd)"
 echo "Listing contents of /app:"
 ls -l /app
 exec uvicorn app.main:app --host 0.0.0.0 --port 8000
+
+sleep infinity
