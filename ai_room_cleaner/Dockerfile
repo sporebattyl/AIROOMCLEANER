@@ -19,7 +19,7 @@ RUN chmod a+x /run.sh && sed -i 's/\r$//g' /run.sh
 
 # Copy application files and install dependencies
 WORKDIR /app
-COPY --chown=app:app ./ai_room_cleaner/app/ /app/
+COPY --chown=app:app ./app/ /app/
 RUN python3 -m venv /opt/venv && \
     /opt/venv/bin/pip3 install --no-cache-dir -r requirements.txt
 
