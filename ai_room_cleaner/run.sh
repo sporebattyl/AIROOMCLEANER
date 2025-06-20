@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/with-contenv bashio
 set -ex
 
 bashio::log.info "Starting AI Room Cleaner..."
