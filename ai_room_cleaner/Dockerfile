@@ -20,7 +20,10 @@ RUN chmod a+x /run.sh && sed -i 's/\r$//g' /run.sh
 # Copy application files and install dependencies
 WORKDIR /app
 COPY --chown=app:app . .
-RUN pip3 install --no-cache-dir -r requirements.txt
+RUN python3 -m venv /opt/venv && \
+    /opt/venv/bin/pip3 install --no-cache-dir -r requirements.txt
+
+ENV PATH="/opt/venv/bin:$PATH"
 
 # Switch to the non-root user
 USER app
