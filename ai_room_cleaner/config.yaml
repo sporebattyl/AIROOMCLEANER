@@ -3,6 +3,7 @@ name: "AI Room Cleaner"
 version: "1.0.2"
 slug: "ai_room_cleaner"
 description: "Uses AI to analyze room cleanliness and create a to-do list."
+image: "ghcr.io/sporebattyl/ai-room-cleaner-{arch}"
 arch:
   - "aarch64"
   - "amd64"
