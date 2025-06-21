@@ -9,6 +9,7 @@ class HomeAssistantService:
     """
 
     def __init__(self):
+        # Ensure the Supervisor token is correctly set for authorization
         self.base_url = "http://supervisor/core/api"
         token = os.getenv("SUPERVISOR_TOKEN")
         self.headers = {
