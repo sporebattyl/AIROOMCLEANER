@@ -13,6 +13,6 @@ source /opt/venv/bin/activate
 echo "Current working directory: $(pwd)"
 echo "Listing contents of /app:"
 ls -l /app
-exec /opt/venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000
+exec /opt/venv/bin/uvicorn main:app --host 0.0.0.0 --port 8000
 
 sleep infinity
