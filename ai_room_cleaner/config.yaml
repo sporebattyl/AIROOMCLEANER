@@ -4,13 +4,13 @@ version: "1.0.2"
 slug: "ai_room_cleaner"
 description: "Uses AI to analyze room cleanliness and create a to-do list."
 homeassistant_api: true
+init: false
 arch:
   - "aarch64"
   - "amd64"
   - "armhf"
   - "armv7"
   - "i386"
-init: false
 map:
   - "config:rw"
 options:
