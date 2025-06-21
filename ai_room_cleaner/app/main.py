@@ -16,8 +16,8 @@ async def lifespan(app: FastAPI):
     # Startup
     ha_service = get_ha_service()
     slug = settings.SLUG
-    ha_service.set_state(f"sensor.{slug}_cleanliness_score", "0", {"unit_of_measurement": "%"})
-    ha_service.set_state(f"sensor.{slug}_last_analysis", "Never", {})
+    await ha_service.set_state(f"sensor.{slug}_cleanliness_score", "0", {"unit_of_measurement": "%"})
+    await ha_service.set_state(f"sensor.{slug}_last_analysis", "Never", {})
     asyncio.create_task(analyze_room_task())
     yield
     # Shutdown
@@ -42,26 +42,26 @@ async def analyze_room_task():
             tasks = analysis_result.get("todo_list", [])
 
             # Update sensors
-            ha_service.set_state(f"sensor.{slug}_cleanliness_score", str(score), {"unit_of_measurement": "%"})
-            ha_service.set_state(f"sensor.{slug}_last_analysis", time.strftime("%Y-%m-%d %H:%M:%S"), {})
+            await ha_service.set_state(f"sensor.{slug}_cleanliness_score", str(score), {"unit_of_measurement": "%"})
+            await ha_service.set_state(f"sensor.{slug}_last_analysis", time.strftime("%Y-%m-%d %H:%M:%S"), {})
             history_service.add_to_history(analysis_result)
 
             # Update to-do list
             todo_entity_id = settings.TODO_LIST_ENTITY_ID
             # Clear existing items
             try:
-                state = ha_service.get_state(todo_entity_id)
+                state = await ha_service.get_state(todo_entity_id)
                 existing_items = state.get('attributes', {}).get('items', [])
                 for item in existing_items:
                     # The item from the state is a dictionary, we need to extract the summary
                     item_name = item.get("summary")
                     if item_name:
-                        ha_service.call_service("todo", "remove_item", {"entity_id": todo_entity_id, "item": item_name})
+                        await ha_service.call_service("todo", "remove_item", {"entity_id": todo_entity_id, "item": item_name})
             except HomeAssistantError as e:
                 print(f"Could not clear to-do list: {e}")
             # Add new items
             for task in tasks:
-                ha_service.call_service("todo", "add_item", {"item": task, "entity_id": todo_entity_id})
+                await ha_service.call_service("todo", "add_item", {"item": task, "entity_id": todo_entity_id})
 
         except (AIError, CameraError, HomeAssistantError) as e:
             print(f"An error occurred: {e}")
