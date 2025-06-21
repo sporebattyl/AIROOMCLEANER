@@ -31,6 +31,8 @@ COPY --chown=app:app ./app/ /app/
 
 ENV PATH="/opt/venv/bin:$PATH"
 
+RUN mkdir -p /app/logs && \
+    chown -R app:app /app
 # Switch to the non-root user
 USER app
 
