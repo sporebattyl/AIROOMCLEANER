@@ -33,10 +33,16 @@ class HomeAssistantService:
         """
         Sets the state of an entity in Home Assistant.
         """
+        token = os.getenv("SUPERVISOR_TOKEN")
+        headers = {
+            "Authorization": f"Bearer {token}",
+            "Content-Type": "application/json",
+        }
         try:
             response = await self.client.post(
                 f"/states/{entity_id}",
                 json={"state": state, "attributes": attributes},
+                headers=headers,
             )
             response.raise_for_status()
         except httpx.HTTPStatusError as e:
