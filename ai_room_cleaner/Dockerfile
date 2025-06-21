@@ -18,14 +18,16 @@ COPY run.sh /run.sh
 RUN chmod a+x /run.sh
 
 # Copy application files and install dependencies
-WORKDIR /app
-COPY --chown=app:app ./app/ /app/
+COPY requirements.txt /requirements.txt
 # Install system dependencies
 RUN apk add --no-cache vips-dev build-base gcc python3-dev
 
 # Install Python dependencies
 RUN python3 -m venv /opt/venv && \
-    /opt/venv/bin/pip3 install --no-cache-dir -r requirements.txt
+    /opt/venv/bin/pip3 install --no-cache-dir -r /requirements.txt
+
+WORKDIR /app
+COPY --chown=app:app ./app/ /app/
 
 ENV PATH="/opt/venv/bin:$PATH"
 
