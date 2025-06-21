@@ -35,3 +35,9 @@ schema:
   ai_prompt: "str"
   camera_entity_id: "str"
   todo_list_entity_id: "str"
+build_from:
+  aarch64: "ghcr.io/home-assistant/aarch64-base-python:3.12-slim"
+  amd64: "ghcr.io/home-assistant/amd64-base-python:3.12-slim"
+  armv7: "ghcr.io/home-assistant/armv7-base-python:3.12-slim"
+args:
+  BUILD_DATE: "$(date +%s)"

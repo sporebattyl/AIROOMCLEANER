@@ -1,3 +1,4 @@
+ARG BUILD_DATE
 # Use the official Home Assistant base image
 ARG BUILD_FROM="ghcr.io/home-assistant/amd64-base-python:latest"
 FROM ${BUILD_FROM}
