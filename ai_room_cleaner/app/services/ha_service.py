@@ -60,3 +60,14 @@ class HomeAssistantService:
             response.raise_for_status()
         except httpx.HTTPStatusError as e:
             raise HomeAssistantError(f"Error calling service {domain}.{service}: {e}") from e
+
+    async def get_camera_image(self, entity_id: str) -> bytes:
+        """
+        Fetches the latest image from a camera entity.
+        """
+        try:
+            response = await self.client.get(f"/camera_proxy/{entity_id}")
+            response.raise_for_status()
+            return response.content
+        except httpx.HTTPStatusError as e:
+            raise HomeAssistantError(f"Error getting camera image for {entity_id}: {e}") from e

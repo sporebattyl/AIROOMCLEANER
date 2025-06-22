@@ -12,4 +12,6 @@ cd /app || exit 1
 
 # Execute the application from within its directory
 # This allows Python's module discovery to work as intended.
-exec /opt/venv/bin/uvicorn main:app --host 0.0.0.0 --port 8000
+# Execute the application using the app module instead of main directly
+# This allows Python's module discovery to work as intended.
+exec /opt/venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000

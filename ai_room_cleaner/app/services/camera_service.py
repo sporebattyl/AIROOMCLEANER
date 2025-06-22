@@ -1,5 +1,6 @@
 from app.services.ha_service import HomeAssistantService
 from app.core.config import settings
+from app.core.exceptions import CameraError
 
 class CameraService:
     """
@@ -13,9 +14,11 @@ class CameraService:
         """
         Gets an image from the specified camera.
         """
-        image_data = await self.ha_service.call_service(
-            "camera", "snapshot", {"entity_id": camera_entity_id}
-        )
-        if not image_data:
-            raise Exception("Failed to get image from camera")
-        return image_data
+        try:
+            # Use the camera proxy endpoint to get the actual image data
+            image_data = await self.ha_service.get_camera_image(camera_entity_id)
+            if not image_data:
+                raise CameraError("Failed to get image from camera")
+            return image_data
+        except Exception as e:
+            raise CameraError(f"Error getting camera image: {e}") from e

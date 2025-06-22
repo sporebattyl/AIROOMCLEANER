@@ -3,13 +3,13 @@ import time
 from fastapi import FastAPI, Depends, HTTPException
 from contextlib import asynccontextmanager
 
-from .core.config import settings
-from .services.ai_service import AIService
-from .services.camera_service import CameraService
-from .services.ha_service import HomeAssistantService
-from .services.history_service import HistoryService
-from .dependencies import get_ai_service, get_camera_service, get_ha_service, get_history_service
-from .core.exceptions import AIError, CameraError, HomeAssistantError
+from app.core.config import settings
+from app.services.ai_service import AIService
+from app.services.camera_service import CameraService
+from app.services.ha_service import HomeAssistantService
+from app.services.history_service import HistoryService
+from app.dependencies import get_ai_service, get_camera_service, get_ha_service, get_history_service
+from app.core.exceptions import AIError, CameraError, HomeAssistantError
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
