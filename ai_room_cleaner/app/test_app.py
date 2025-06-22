@@ -1,19 +1,26 @@
+import asyncio
 import os
+import sys
 import time
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, patch
+
+# Add the parent directory to the path to allow absolute imports
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 
 # Set mock environment variables for testing
-os.environ["SUPERVISOR_CONFIG_camera_entity_id"] = "camera.test_camera"
-os.environ["SUPERVISOR_CONFIG_ai_provider"] = "Google Gemini"
-os.environ["SUPERVISOR_CONFIG_api_key"] = "test_api_key" # This will be used by the mock
-os.environ["SUPERVISOR_CONFIG_recheck_interval_minutes"] = "1"
-os.environ["SUPERVISOR_CONFIG_todo_list_name"] = "Test To-Do List"
+os.environ["AI_PROVIDER"] = "google_gemini"
+os.environ["GOOGLE_API_KEY"] = "test_api_key"
+os.environ["CAMERA_ENTITY_ID"] = "camera.test_camera"
+os.environ["RECHECK_INTERVAL_MINUTES"] = "1"
+os.environ["TODO_LIST_ENTITY_ID"] = "todo.test_to-do_list"
 os.environ["SUPERVISOR_TOKEN"] = "test_supervisor_token"
 
-# Import the main function after setting environment variables
-from app.main import main
+# Import the task to be tested
+from app.main import analyze_room_task
+from app.core.config import settings
 
-def run_test():
+async def run_test():
     """
     Runs a single iteration of the main application loop with a mocked
     Home Assistant service to validate the core logic.
@@ -21,7 +28,7 @@ def run_test():
     print("--- Starting Application Test ---")
 
     # Create a mock for the HomeAssistantService
-    mock_ha_service = MagicMock()
+    mock_ha_service = AsyncMock()
 
     # Simulate get_camera_image to return a dummy image (a single black pixel)
     dummy_image = b'\xff\xd8\xff\xe0\x00\x10JFIF\x00\x01\x01\x00\x00\x01\x00\x01\x00\x00\xff\xdb\x00C\x00\x03\x02\x02\x02\x02\x02\x03\x02\x02\x02\x03\x03\x03\x03\x04\x06\x04\x04\x04\x04\x04\x08\x06\x06\x05\x06\t\x08\n\n\t\x08\t\t\n\x0c\x0f\x0c\n\x0b\x0e\x0b\t\t\r\x11\r\x0e\x0f\x10\x10\x11\x10\n\x0c\x12\x13\x12\x10\x13\x0f\x10\x10\x10\xff\xc0\x00\x0b\x08\x00\x01\x00\x01\x01\x01\x11\x00\xff\xc4\x00\x14\x00\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xff\xda\x00\x08\x01\x01\x00\x00?\x00\xd2\xcf\x00\xff\xd9'
@@ -34,24 +41,31 @@ def run_test():
     }
 
     # Use a patch to replace the real services with our mocks
-    with patch('app.main.HomeAssistantService', return_value=mock_ha_service), \
-         patch('app.main.AIService.analyze_image', return_value=mock_ai_response):
+    with patch('app.main.get_ha_service', return_value=mock_ha_service), \
+         patch('app.main.get_camera_service') as mock_get_camera_service, \
+         patch('app.services.ai_service.AIService.analyze_image', new_callable=AsyncMock, return_value=mock_ai_response), \
+         patch('app.main.get_history_service'):
 
-        print("Running one loop of the main application...")
+        # Mock the CameraService to return a dummy image
+        mock_camera_service_instance = AsyncMock()
+        mock_camera_service_instance.get_image.return_value = dummy_image
+        mock_get_camera_service.return_value = mock_camera_service_instance
+
+        print("Running one loop of the analyze_room_task...")
         
-        # We need to run main in a way that it executes once and exits.
-        # The main function has an infinite loop, so we'll patch time.sleep
+        # We need to run analyze_room_task in a way that it executes once and exits.
+        # The task has an infinite loop, so we'll patch asyncio.sleep
         # to raise an exception after the first call.
-        with patch('time.sleep', side_effect=SystemExit("Test loop finished")):
+        with patch('asyncio.sleep', side_effect=SystemExit("Test loop finished")):
             try:
-                main()
+                await analyze_room_task()
             except SystemExit as e:
                 print(e)
 
     print("\n--- Verifying Mock Calls ---")
     
     # Check if the camera image was fetched
-    mock_ha_service.get_camera_image.assert_called_once_with("camera.test_camera")
+    mock_camera_service_instance.get_image.assert_called_once_with(settings.CAMERA_ENTITY_ID)
     print("✓ Camera image was fetched.")
 
     # Check if sensors were updated
@@ -67,4 +81,4 @@ def run_test():
 
 
 if __name__ == "__main__":
-    run_test()
+    asyncio.run(run_test())

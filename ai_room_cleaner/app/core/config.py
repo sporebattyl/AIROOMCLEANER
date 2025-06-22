@@ -14,6 +14,7 @@ class Settings(BaseSettings):
         env_file=".env",
         env_file_encoding="utf-8",
         json_file="/data/options.json",
+        env_prefix="SUPERVISOR_CONFIG_",
         case_sensitive=False,
         extra="ignore"
     )

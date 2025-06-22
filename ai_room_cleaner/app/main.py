@@ -35,7 +35,7 @@ async def analyze_room_task():
 
     while True:
         try:
-            image_data = camera_service.get_image(settings.CAMERA_ENTITY_ID)
+            image_data = await camera_service.get_image(settings.CAMERA_ENTITY_ID)
             analysis_result = await ai_service.analyze_image(image_data)
 
             score = analysis_result.get("cleanliness_score", 0)
