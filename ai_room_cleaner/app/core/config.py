@@ -1,73 +1,22 @@
-from pydantic_settings import BaseSettings, SettingsConfigDict
-from pydantic import Field, SecretStr, model_validator
-from enum import Enum
-from typing import List, Optional
-from typing_extensions import Self
-import os
-
-class AIProvider(str, Enum):
-    OPENAI = "openai"
-    GOOGLE_GEMINI = "google_gemini"
+from pydantic_settings import BaseSettings
+from pydantic import Field
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(
-        env_file=".env",
-        env_file_encoding="utf-8",
-        json_file="/data/options.json",
-        env_prefix="SUPERVISOR_CONFIG_",
-        case_sensitive=False,
-        extra="ignore"
-    )
-    """Application configuration."""
+    LOG_LEVEL: str = Field(..., alias="LOG_LEVEL")
+    AI_PROVIDER: str = Field(..., alias="AI_PROVIDER")
+    OPENAI_API_KEY: str | None = Field(None, alias="OPENAI_API_KEY")
+    GOOGLE_API_KEY: str | None = Field(None, alias="GOOGLE_API_KEY")
+    AI_MODEL: str = Field(..., alias="AI_MODEL")
+    PROMPT: str = Field(..., alias="PROMPT")
+    CAMERA_ENTITY_ID: str = Field(..., alias="CAMERA_ENTITY")
+    CLEANLINESS_SENSOR_ENTITY: str = Field(..., alias="CLEANLINESS_SENSOR_ENTITY")
+    TODO_LIST_ENTITY_ID: str = Field(..., alias="TODO_LIST_ENTITY")
+    RECHECK_INTERVAL_MINUTES: int = Field(..., alias="RUN_INTERVAL_MINUTES")
+    SUPERVISOR_TOKEN: str = Field(..., alias="SUPERVISOR_TOKEN")
+    SLUG: str = Field("ai_room_cleaner", alias="SLUG")
 
-    # Addon specific
-    SLUG: str = Field(os.path.basename(os.path.dirname(os.path.dirname(os.path.realpath(__file__)))), description="Addon slug")
+    class Config:
+        env_file = ".env"
+        env_file_encoding = "utf-8"
 
-    # Core AI Configuration
-    AI_PROVIDER: AIProvider = Field(AIProvider.OPENAI, description="AI provider to use", alias='ai_provider')
-    OPENAI_API_KEY: Optional[SecretStr] = Field(None, description="OpenAI API key")
-    OPENAI_MODEL: str = Field("gpt-4-vision-preview", description="AI model name to use", alias='openai_model')
-    AI_PROMPT: str = Field("Analyze the image and create a to-do list for cleaning.", description="The prompt for the AI", alias='ai_prompt')
-    GOOGLE_API_KEY: Optional[SecretStr] = Field(None, description="Google API key", alias='google_api_key')
-    GOOGLE_MODEL: str = Field("gemini-pro-vision", description="Google model name to use", alias='google_model')
-
-    # Home Assistant Integration
-    SUPERVISOR_URL: str = Field("http://supervisor/core", description="Home Assistant Supervisor URL")
-    SUPERVISOR_TOKEN: Optional[SecretStr] = Field(None, description="Home Assistant Supervisor token")
-    CAMERA_ENTITY_ID: str = Field("camera.your_camera", description="Camera entity ID to use for analysis", alias='camera_entity_id')
-    TODO_LIST_ENTITY_ID: str = Field("todo.ai_room_cleaner", description="To-do list entity ID", alias='todo_list_entity_id')
-
-    # Application Settings
-    LOG_LEVEL: str = Field("INFO", description="Logging level", alias='log_level')
-    HISTORY_FILE_PATH: str = Field("/data/history.json", description="Path to the history file")
-
-    # Image Processing
-    MAX_IMAGE_SIZE_MB: int = Field(10, ge=1, le=100, description="Maximum image size in MB")
-    MAX_IMAGE_DIMENSION: int = Field(2048, ge=256, le=8192, description="Maximum image dimension")
-
-    # VIPS Configuration
-    VIPS_CACHE_MAX: int = Field(100, ge=10, le=1000, description="VIPS cache max MB")
-    HIGH_RISK_DIMENSION_THRESHOLD: int = Field(8000, description="High risk dimension threshold for images")
-
-    # CORS Configuration
-    CORS_ALLOWED_ORIGINS: List[str] = Field(["*"], description="CORS allowed origins")
-
-    # Re-check Interval
-    RECHECK_INTERVAL_MINUTES: int = Field(60, description="How often to re-analyze the room")
-
-
-    @property
-    def current_api_key(self) -> SecretStr:
-        """Get the API key for the current provider"""
-        if self.AI_PROVIDER == AIProvider.OPENAI:
-            if not self.OPENAI_API_KEY:
-                raise ValueError("OpenAI API key is not set")
-            return self.OPENAI_API_KEY
-        if self.AI_PROVIDER == AIProvider.GOOGLE_GEMINI:
-            if not self.GOOGLE_API_KEY:
-                raise ValueError("Google API key is not set")
-            return self.GOOGLE_API_KEY
-        raise ValueError(f"No API key available for provider: {self.AI_PROVIDER}")
-
-
-settings: Settings = Settings()
+settings = Settings()

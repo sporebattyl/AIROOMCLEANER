@@ -1,73 +1,52 @@
-import os
-from typing import Dict, Any
 import httpx
-from app.core.exceptions import HomeAssistantError
+from app.core.config import settings
+from app.core.exceptions import HomeAssistantAPIError
+from app.core.logging import log
 
 class HomeAssistantService:
-    """
-    Service for interacting with the Home Assistant API.
-    """
-
     def __init__(self):
-        # Ensure the Supervisor token is correctly set for authorization
+        self.supervisor_token = settings.SUPERVISOR_TOKEN
         self.base_url = "http://supervisor/core/api"
-        token = os.getenv("SUPERVISOR_TOKEN")
         self.headers = {
-            "Authorization": f"Bearer {token}",
+            "Authorization": f"Bearer {self.supervisor_token}",
             "Content-Type": "application/json",
         }
-        self.client = httpx.AsyncClient(base_url=self.base_url, headers=self.headers)
 
-    async def get_state(self, entity_id: str) -> Dict[str, Any]:
-        """
-        Gets the state of an entity in Home Assistant.
-        """
-        try:
-            response = await self.client.get(f"/states/{entity_id}")
-            response.raise_for_status()
-            return response.json()
-        except httpx.HTTPStatusError as e:
-            raise HomeAssistantError(f"Error getting state for {entity_id}: {e}") from e
+    async def _request(self, method: str, endpoint: str, **kwargs) -> dict:
+        async with httpx.AsyncClient() as client:
+            try:
+                response = await client.request(
+                    method, f"{self.base_url}{endpoint}", headers=self.headers, **kwargs
+                )
+                response.raise_for_status()
+                if response.content:
+                    return response.json()
+                return {}
+            except httpx.HTTPStatusError as e:
+                log.error(f"HTTP error calling HA API: {e.response.status_code} - {e.response.text}")
+                raise HomeAssistantAPIError(f"Error calling Home Assistant API: {e.response.text}")
+            except Exception as e:
+                log.error(f"An unexpected error occurred calling HA API: {e}")
+                raise HomeAssistantAPIError(f"An unexpected error occurred: {e}")
 
-    async def set_state(self, entity_id: str, state: str, attributes: Dict[str, Any]):
-        """
-        Sets the state of an entity in Home Assistant.
-        """
-        token = os.getenv("SUPERVISOR_TOKEN")
-        headers = {
-            "Authorization": f"Bearer {token}",
-            "Content-Type": "application/json",
-        }
-        try:
-            response = await self.client.post(
-                f"/states/{entity_id}",
-                json={"state": state, "attributes": attributes},
-                headers=headers,
-            )
-            response.raise_for_status()
-        except httpx.HTTPStatusError as e:
-            raise HomeAssistantError(f"Error setting state for {entity_id}: {e}") from e
+    async def set_entity_state(self, entity_id: str, state: str, attributes: dict):
+        log.info(f"Setting state for {entity_id}")
+        payload = {"state": state, "attributes": attributes}
+        await self._request("POST", f"/states/{entity_id}", json=payload)
 
-    async def call_service(self, domain: str, service: str, service_data: Dict[str, Any]):
-        """
-        Calls a service in Home Assistant.
-        """
-        try:
-            response = await self.client.post(
-                f"/services/{domain}/{service}",
-                json=service_data,
-            )
-            response.raise_for_status()
-        except httpx.HTTPStatusError as e:
-            raise HomeAssistantError(f"Error calling service {domain}.{service}: {e}") from e
+    async def get_todo_list_items(self, entity_id: str) -> list:
+        log.info(f"Getting items from to-do list {entity_id}")
+        response = await self._request("GET", f"/todo/items/{entity_id}")
+        return response or []
 
-    async def get_camera_image(self, entity_id: str) -> bytes:
-        """
-        Fetches the latest image from a camera entity.
-        """
-        try:
-            response = await self.client.get(f"/camera_proxy/{entity_id}")
-            response.raise_for_status()
-            return response.content
-        except httpx.HTTPStatusError as e:
-            raise HomeAssistantError(f"Error getting camera image for {entity_id}: {e}") from e
+    async def create_todo_list_item(self, entity_id: str, item: str):
+        log.info(f"Adding '{item}' to to-do list {entity_id}")
+        await self._request("POST", f"/todo/items/{entity_id}", json={"item": item})
+
+    async def clear_todo_list(self, entity_id: str):
+        log.info(f"Clearing to-do list {entity_id}")
+        items = await self.get_todo_list_items(entity_id)
+        for item in items:
+            uid = item.get("uid")
+            if uid:
+                await self._request("DELETE", f"/todo/items/{entity_id}/{uid}")

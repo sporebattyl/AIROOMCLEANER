@@ -1,41 +1,28 @@
-ARG BUILD_DATE
-# Use the official Home Assistant base image
-ARG BUILD_FROM="ghcr.io/home-assistant/amd64-base-python:latest"
-FROM ${BUILD_FROM}
+# Use an official Python runtime as a parent image
+FROM python:3.11-slim-bookworm
 
-# Set shell
-SHELL ["/bin/bash", "-o", "pipefail", "-c"]
-
-# Install build dependencies, create a non-root user, and install python dependencies
-RUN apk add --no-cache python3 py3-pip && \
-    addgroup --system app && \
-    adduser --system --ingroup app app
-
-# Create app directory
-WORKDIR /
-
-# Copy the run script to the root and make it executable
-COPY run.sh /run.sh
-RUN chmod a+x /run.sh
-
-# Copy application files and install dependencies
-COPY requirements.txt /requirements.txt
-# Install system dependencies
-RUN apk add --no-cache vips-dev build-base gcc python3-dev
-
-# Install Python dependencies
-RUN python3 -m venv /opt/venv && \
-    /opt/venv/bin/pip3 install --no-cache-dir -r /requirements.txt
-
+# Set the working directory in the container
 WORKDIR /app
-COPY --chown=app:app ./app/ /app/
 
+# Install system dependencies
+RUN apt-get update && \
+    apt-get install -y build-essential musl-dev libffi-dev && \
+    rm -rf /var/lib/apt/lists/*
+
+# Create and activate a virtual environment
+RUN python3 -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
-RUN mkdir -p /app/logs && \
-    chown -R app:app /app
-# Switch to the non-root user
-USER app
+# Copy the requirements file and install dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
-# Set the entrypoint to run.sh
-CMD [ "/run.sh" ]
+# Copy the rest of the application code
+COPY ./app /app
+
+# Make the run script executable
+COPY run.sh .
+RUN chmod +x run.sh
+
+# Run the application
+CMD ["./run.sh"]

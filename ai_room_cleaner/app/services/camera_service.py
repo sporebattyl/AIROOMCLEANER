@@ -1,24 +1,26 @@
-from app.services.ha_service import HomeAssistantService
+import httpx
 from app.core.config import settings
 from app.core.exceptions import CameraError
+from app.core.logging import log
 
 class CameraService:
-    """
-    Service for interacting with cameras in Home Assistant.
-    """
+    def __init__(self):
+        self.supervisor_token = settings.SUPERVISOR_TOKEN
+        self.base_url = "http://supervisor/core/api"
+        self.camera_entity_id = settings.CAMERA_ENTITY
+        self.headers = {"Authorization": f"Bearer {self.supervisor_token}"}
 
-    def __init__(self, ha_service: HomeAssistantService):
-        self.ha_service = ha_service
-
-    async def get_image(self, camera_entity_id: str) -> bytes:
-        """
-        Gets an image from the specified camera.
-        """
-        try:
-            # Use the camera proxy endpoint to get the actual image data
-            image_data = await self.ha_service.get_camera_image(camera_entity_id)
-            if not image_data:
-                raise CameraError("Failed to get image from camera")
-            return image_data
-        except Exception as e:
-            raise CameraError(f"Error getting camera image: {e}") from e
+    async def get_camera_image(self) -> bytes:
+        log.info(f"Fetching image from camera entity: {self.camera_entity_id}")
+        url = f"{self.base_url}/camera_proxy/{self.camera_entity_id}"
+        async with httpx.AsyncClient() as client:
+            try:
+                response = await client.get(url, headers=self.headers, timeout=10)
+                response.raise_for_status()
+                return response.content
+            except httpx.HTTPStatusError as e:
+                log.error(f"Failed to get camera image: {e.response.status_code} - {e.response.text}")
+                raise CameraError(f"Could not retrieve camera image for {self.camera_entity_id}")
+            except Exception as e:
+                log.error(f"An unexpected error occurred fetching camera image: {e}")
+                raise CameraError(f"An unexpected error occurred: {e}")

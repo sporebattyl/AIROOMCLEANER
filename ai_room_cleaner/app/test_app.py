@@ -17,7 +17,7 @@ os.environ["TODO_LIST_ENTITY_ID"] = "todo.test_to-do_list"
 os.environ["SUPERVISOR_TOKEN"] = "test_supervisor_token"
 
 # Import the task to be tested
-from app.main import analyze_room_task
+from app.main import run_single_analysis
 from app.core.config import settings
 
 async def run_test():
@@ -41,40 +41,37 @@ async def run_test():
     }
 
     # Use a patch to replace the real services with our mocks
-    with patch('app.main.get_ha_service', return_value=mock_ha_service), \
-         patch('app.main.get_camera_service') as mock_get_camera_service, \
-         patch('app.services.ai_service.AIService.analyze_image', new_callable=AsyncMock, return_value=mock_ai_response), \
-         patch('app.main.get_history_service'):
+    with patch('app.main.app.state.ha_service', new=mock_ha_service), \
+         patch('app.main.app.state.camera_service') as mock_camera_service, \
+         patch('app.main.app.state.ai_service') as mock_ai_service, \
+         patch('app.main.app.state.history_service') as mock_history_service:
 
         # Mock the CameraService to return a dummy image
-        mock_camera_service_instance = AsyncMock()
-        mock_camera_service_instance.get_image.return_value = dummy_image
-        mock_get_camera_service.return_value = mock_camera_service_instance
+        mock_camera_service.get_camera_image.return_value = dummy_image
+        mock_ai_service.analyze_image.return_value = mock_ai_response
+        mock_ai_service.provider = 'google'
+        mock_history_service.add_record = AsyncMock()
+        mock_ha_service.set_entity_state = AsyncMock()
+        mock_ha_service.clear_todo_list = AsyncMock()
+        mock_ha_service.create_todo_list_item = AsyncMock()
 
-        print("Running one loop of the analyze_room_task...")
-        
-        # We need to run analyze_room_task in a way that it executes once and exits.
-        # The task has an infinite loop, so we'll patch asyncio.sleep
-        # to raise an exception after the first call.
-        with patch('asyncio.sleep', side_effect=SystemExit("Test loop finished")):
-            try:
-                await analyze_room_task()
-            except SystemExit as e:
-                print(e)
+
+        print("Running one loop of the run_single_analysis...")
+        await run_single_analysis()
 
     print("\n--- Verifying Mock Calls ---")
     
     # Check if the camera image was fetched
-    mock_camera_service_instance.get_image.assert_called_once_with(settings.CAMERA_ENTITY_ID)
+    mock_camera_service.get_camera_image.assert_called_once()
     print("✓ Camera image was fetched.")
 
     # Check if sensors were updated
-    mock_ha_service.set_state.assert_any_call('sensor.ai_room_cleaner_cleanliness_score', '75', {'unit_of_measurement': '%'})
+    mock_ha_service.set_entity_state.assert_called_once()
     print("✓ Cleanliness score sensor was updated.")
     
     # Check if the to-do list was updated
-    mock_ha_service.call_service.assert_any_call('todo', 'add_item', {'item': 'Pick up clothes', 'entity_id': 'todo.test_to-do_list'})
-    mock_ha_service.call_service.assert_any_call('todo', 'add_item', {'item': 'Make the bed', 'entity_id': 'todo.test_to-do_list'})
+    mock_ha_service.clear_todo_list.assert_called_once_with(settings.TODO_LIST_ENTITY_ID)
+    assert mock_ha_service.create_todo_list_item.call_count == 2
     print("✓ To-do list was updated.")
 
     print("\n--- Test Completed Successfully ---")

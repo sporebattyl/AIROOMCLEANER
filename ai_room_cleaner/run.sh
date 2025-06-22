@@ -1,17 +1,20 @@
 #!/usr/bin/with-contenv bashio
 
-bashio::log.info "Starting AI Room Cleaner..."
+echo "Starting AI Room Cleaner addon"
 
-# Set the Python Path (optional with cd, but good practice)
-export PYTHONPATH=/app
+# Get config values
+CONFIG_PATH=/data/options.json
 
-bashio::log.info "Activating virtual environment and starting server..."
+export LOG_LEVEL=$(bashio::config 'log_level')
+export AI_PROVIDER=$(bashio::config 'ai_provider')
+export OPENAI_API_KEY=$(bashio::config 'openai_api_key')
+export GOOGLE_API_KEY=$(bashio::config 'google_api_key')
+export AI_MODEL=$(bashio::config 'ai_model')
+export PROMPT=$(bashio::config 'prompt')
+export CAMERA_ENTITY=$(bashio::config 'camera_entity')
+export CLEANLINESS_SENSOR_ENTITY=$(bashio::config 'cleanliness_sensor_entity')
+export TODO_LIST_ENTITY=$(bashio::config 'todo_list_entity')
+export RUN_INTERVAL_MINUTES=$(bashio::config 'run_interval_minutes')
 
-# Change the current working directory to the app's root
-cd /app || exit 1
-
-# Execute the application from within its directory
-# This allows Python's module discovery to work as intended.
-# Execute the application using the app module instead of main directly
-# This allows Python's module discovery to work as intended.
-exec /opt/venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000
+# Start the application
+exec python -m app.main

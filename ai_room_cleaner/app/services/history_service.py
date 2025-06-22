@@ -1,36 +1,24 @@
 import json
-from typing import List, Dict, Any
-from app.core.config import settings
+import aiofiles
+from app.core.logging import log
+
+HISTORY_FILE = "/data/history.json"
 
 class HistoryService:
-    """
-    Service for managing the analysis history.
-    """
-
-    def __init__(self):
-        self.history_file = settings.HISTORY_FILE_PATH
-
-    def get_history(self) -> List[Dict[str, Any]]:
-        """
-        Gets the analysis history.
-        """
-        import os
-        if not os.path.exists(self.history_file):
-            return []
+    async def get_history(self) -> list:
         try:
-            with open(self.history_file, "r") as f:
-                return json.load(f)
-        except FileNotFoundError:
+            async with aiofiles.open(HISTORY_FILE, mode="r") as f:
+                contents = await f.read()
+                return json.loads(contents)
+        except (FileNotFoundError, json.JSONDecodeError):
             return []
 
-    def add_to_history(self, item: Dict[str, Any]):
-        """
-        Adds an item to the analysis history.
-        """
-        import os
-        if not os.path.exists(os.path.dirname(self.history_file)):
-            os.makedirs(os.path.dirname(self.history_file))
-        history = self.get_history()
-        history.insert(0, item)
-        with open(self.history_file, "w") as f:
-            json.dump(history, f, indent=4)
+    async def add_record(self, record: dict):
+        history = await self.get_history()
+        history.append(record)
+        try:
+            async with aiofiles.open(HISTORY_FILE, mode="w") as f:
+                await f.write(json.dumps(history, indent=2))
+            log.info("Successfully wrote analysis record to history.")
+        except Exception as e:
+            log.error(f"Failed to write to history file: {e}")
